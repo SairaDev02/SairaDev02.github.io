@@ -1,0 +1,71 @@
+---
+// The CD player picture in its frame, with the LCD faceplate underneath. The canvas is
+// drawn by scripts/player/cd-player.ts; the grid size here is the wide one and is replaced
+// at runtime on phones.
+import { WIDE } from '../scripts/player/geometry';
+import Lcd from './Lcd.astro';
+import { GITHUB_USER } from '../lib/github';
+
+interface Props {
+  count: number;
+}
+const { count } = Astro.props;
+const alt = `A CD player in a cloudy sky beside ${count} discs, one per public repository. Loading a disc into the player opens that repository; the track list below does the same.`;
+---
+
+<div class="wrap stage" data-player>
+  <span class="rail label" aria-hidden="true">{GITHUB_USER}™ · public work</span>
+  <div class="frame">
+    <canvas width={WIDE.W} height={WIDE.H} role="img" aria-label={alt}></canvas>
+    <Lcd total={count} />
+  </div>
+</div>
+
+<style>
+  .stage { position: relative; }
+  .frame {
+    display: block;
+    width: fit-content;
+    max-width: 100%;
+    margin: 0 auto;
+    line-height: 0;
+    background: var(--shade-0);
+    border: 1px solid rgb(255 255 255 / 0.9);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 0 0 6px rgb(255 255 255 / 0.35), 0 24px 60px -20px rgb(29 63 208 / 0.55);
+  }
+  canvas {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    image-rendering: pixelated;
+    touch-action: pan-y;
+  }
+  .rail {
+    display: none;
+    position: absolute;
+    right: -8px;
+    top: 50%;
+    writing-mode: vertical-rl;
+    transform: translateY(-60%);
+  }
+  @media (min-width: 1200px) {
+    .rail { display: block; }
+  }
+  /* A yellow star glinting over the frame's top-right corner. */
+  .stage::after {
+    content: '';
+    position: absolute;
+    right: 6%;
+    top: -18px;
+    width: 64px;
+    height: 64px;
+    pointer-events: none;
+    background:
+      radial-gradient(circle, var(--sun-core) 0 3px, rgb(255 214 10 / 0.7) 4px, transparent 20px),
+      linear-gradient(90deg, transparent 0 45%, var(--sun) 50%, transparent 55% 100%) center / 100% 2px no-repeat,
+      linear-gradient(0deg, transparent 0 45%, var(--sun) 50%, transparent 55% 100%) center / 2px 100% no-repeat;
+    filter: drop-shadow(0 0 6px rgb(255 214 10 / 0.9));
+  }
+</style>

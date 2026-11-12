@@ -1,0 +1,95 @@
+---
+// Playlist header: disc cover art, title, stats, and the play and shuffle buttons (wired
+// by the dock through their data-np attributes).
+import { GITHUB_USER, type Repo } from '../lib/github';
+
+interface Props {
+  repos: Repo[];
+  lastPush: string;
+}
+const { repos, lastPush } = Astro.props;
+const commits = repos.reduce((a, r) => a + r.commits, 0);
+const languages = [...new Set(repos.map((r) => r.language).filter((l) => l !== null))];
+---
+
+<div class="plh">
+  <span class="art" aria-hidden="true"><i></i></span>
+  <div class="text">
+    <p class="label">Public playlist · {repos.length} repositories</p>
+    <h1 class="h">
+      <span class="h1">{GITHUB_USER}</span>
+      <span class="h2">public work</span>
+    </h1>
+    <p class="stats">{commits} commits · {languages.join(' / ')} · updated {lastPush}</p>
+    <div class="actions">
+      <button type="button" class="play" data-np="play" aria-label="Play the cued repository: opens it">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"></path></svg>
+      </button>
+      <button type="button" class="shuffle" data-np="shuffle-play">Shuffle</button>
+    </div>
+  </div>
+</div>
+
+<style>
+  .plh { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 28px; margin-bottom: 28px; }
+  .art {
+    flex: none;
+    width: 168px;
+    height: 168px;
+    border-radius: 14px;
+    display: grid;
+    place-items: center;
+    background: linear-gradient(160deg, #f6f9ff, #a9c3f6 60%, var(--accent));
+    box-shadow: 0 24px 50px -24px rgb(29 63 208 / 0.7), inset 0 0 0 1px rgb(255 255 255 / 0.8);
+  }
+  .art i {
+    width: 128px;
+    height: 128px;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle, var(--accent) 0 4px, #fff 5px 16px, transparent 17px),
+      conic-gradient(from 20deg, #dfe8ff, #fff 12%, #a9c3f6 25%, #fff 40%, var(--sun) 48%, #fff 55%, #a9c3f6 70%, #fff 85%, #dfe8ff);
+    box-shadow: 0 6px 18px rgb(12 18 51 / 0.25);
+  }
+  .text { min-width: 0; }
+  .text p { margin: 0; }
+
+  .h { margin: 0; display: flex; flex-direction: column; font-family: var(--wide); line-height: 0.95; text-transform: uppercase; }
+  .h1 { color: var(--accent); font-size: clamp(1.7rem, 3.9vw, 3.3rem); font-weight: 600; letter-spacing: 0.01em; white-space: nowrap; }
+  .h2 {
+    font-size: clamp(1.5rem, 3.4vw, 2.5rem);
+    font-weight: 300;
+    letter-spacing: 0.04em;
+    margin-top: 8px;
+    width: fit-content;
+    /* Highlighter stripe behind the second line. */
+    background: linear-gradient(transparent 58%, var(--sun) 58% 92%, transparent 92%);
+  }
+  .stats { margin-top: 12px !important; font: 400 13px/1.5 var(--body); color: var(--muted); }
+
+  .actions { display: flex; align-items: center; gap: 14px; margin-top: 18px; }
+  .play, .shuffle { all: unset; cursor: pointer; }
+  .play {
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--sun);
+    color: var(--on-sun);
+    box-shadow: 0 0 0 1px var(--accent), 0 10px 28px -8px rgb(255 214 10 / 0.9);
+  }
+  .play svg { width: 24px; height: 24px; }
+  .play:hover { transform: scale(1.05); }
+  .shuffle {
+    font: 500 13px/1 var(--ui);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 12px 18px;
+    border-radius: 999px;
+    border: 1px solid var(--line-strong);
+    color: var(--accent);
+  }
+  .shuffle:hover { background: var(--sun); color: var(--on-sun); border-color: var(--sun); }
+  .play:focus-visible, .shuffle:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+</style>

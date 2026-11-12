@@ -1,0 +1,94 @@
+---
+// Handle with a barcode, last-push readout and the main navigation.
+import { GITHUB_USER } from '../lib/github';
+
+interface Props {
+  /** Last push across all repositories, "2026.11.12". */
+  lastPush: string;
+}
+const { lastPush } = Astro.props;
+// Barcode bar widths derived from the handle: decoration with a stable source.
+const bars = [...GITHUB_USER].flatMap((ch) => {
+  const c = ch.charCodeAt(0);
+  return [1 + (c % 3), 1 + ((c >> 2) % 2), 1 + ((c >> 3) % 3)];
+});
+const nav = [
+  { label: 'Projects', href: '/', current: true },
+  // Pages not built yet.
+  { label: 'Writing', href: '#writing' },
+  { label: 'Resume', href: '#resume' },
+  { label: 'Contact', href: '#contact' },
+];
+---
+
+<header class="wrap top">
+  <a class="brand" href="/">
+    <span class="label">{GITHUB_USER} <sup>™</sup></span>
+    <span class="barcode" aria-hidden="true">
+      {bars.map((w, i) => <i style={`width:${w * 2}px;margin-right:${i % 3 === 2 ? 3 : 2}px`} />)}
+    </span>
+  </a>
+  <p class="push">
+    <span class="dots" aria-hidden="true"><b></b><b></b><b class="lit"></b></span>
+    <span class="label">▶ {lastPush}</span>
+    <span class="label label-dim">Last push</span>
+  </p>
+  <nav class="nav" aria-label="Main">
+    {nav.map((n) => <a href={n.href} aria-current={n.current ? 'page' : undefined}>{n.label}</a>)}
+  </nav>
+</header>
+
+<style>
+  .top {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 16px 24px;
+    align-items: center;
+    padding-top: 20px;
+    padding-bottom: 20px;
+  }
+  @media (min-width: 900px) {
+    .top { grid-template-columns: 1fr 1fr auto; }
+  }
+  .brand {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    text-decoration: none;
+    width: fit-content;
+  }
+  .barcode { display: flex; height: 18px; }
+  .barcode i { display: block; height: 100%; background: var(--accent); }
+
+  .push { display: none; align-items: center; gap: 12px; margin: 0; }
+  @media (min-width: 900px) {
+    .push { display: flex; }
+  }
+  .dots { display: inline-flex; gap: 5px; }
+  .dots b { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+  .dots b.lit { background: var(--sun); }
+
+  .nav { display: flex; }
+  .nav a {
+    font: 400 13px/1.65 var(--ui);
+    min-height: 36px;
+    padding: 0 12px;
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--line-strong);
+    margin-left: -1px;
+    text-decoration: none;
+  }
+  .nav a:first-child { margin-left: 0; border-radius: 999px 0 0 999px; }
+  .nav a:last-child { border-radius: 0 999px 999px 0; }
+  .nav a:hover { background: var(--sun); color: var(--on-sun); position: relative; }
+  .nav a[aria-current='page'] {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--on-accent);
+    position: relative;
+  }
+  @media (max-width: 599px) {
+    .top { grid-template-columns: minmax(0, 1fr); }
+  }
+</style>

@@ -1,0 +1,22 @@
+---
+// Commit waveform: one bar per lifetime slice, mirrored about the centre line.
+import { BAR_PITCH, waveBars } from '../lib/wave';
+
+interface Props {
+  wave: number[];
+  /** Shared scale across several waves; defaults to this wave's own peak. */
+  max?: number;
+  class?: string;
+}
+const { wave, max, class: cls } = Astro.props;
+const H = 24;
+const bars = waveBars(wave, { height: H, max });
+---
+
+<svg class:list={['wave', cls]} viewBox={`0 0 ${wave.length * BAR_PITCH} ${H}`} preserveAspectRatio="none" aria-hidden="true">
+  {bars.map((b) => <rect x={b.x} y={b.y} width="2" height={b.h} />)}
+</svg>
+
+<style>
+  .wave { display: block; width: 100%; height: 24px; fill: currentColor; shape-rendering: crispEdges; }
+</style>
