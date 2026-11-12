@@ -92,6 +92,18 @@ describe('loadRepos', () => {
     });
   });
 
+  it('leaves out hidden repos by name, ignoring case, without fetching their details', async () => {
+    const client = fakeClient({
+      '/users/u/repos?per_page=100&type=owner&sort=pushed': [
+        raw('shown', '2025-01-01T00:00:00Z'),
+        raw('Secret', '2026-01-01T00:00:00Z'),
+      ],
+      '/repos/u/shown/commits?per_page=100&page=1': [],
+    });
+    const repos = await loadRepos('u', client, { hidden: ['secret'] });
+    expect(repos.map((r) => r.name)).toEqual(['shown']);
+  });
+
   it('rejects an unexpected API shape at the boundary', async () => {
     const client = fakeClient({ '/users/u/repos?per_page=100&type=owner&sort=pushed': [{ name: 42 }] });
     await expect(loadRepos('u', client)).rejects.toThrow(/name/);

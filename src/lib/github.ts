@@ -5,6 +5,8 @@ import { readmeToLyrics, type Lyric } from './lyrics';
 import { binCommits } from './wave';
 
 export const GITHUB_USER = 'SairaDev02';
+/** Public repositories kept off the site, by name (GitHub names ignore case). */
+export const HIDDEN_REPOS = ['SairaDev02.github.io', 'HearSeePrototype'];
 
 export interface Repo {
   name: string;
@@ -137,12 +139,13 @@ async function commitTimes(client: GitHubClient, user: string, name: string): Pr
   return times.sort((a, b) => a - b);
 }
 
-/** Public, non-fork repositories of `user`, most recently pushed first. */
-export async function loadRepos(user: string, client: GitHubClient): Promise<Repo[]> {
+/** Public, non-fork, non-hidden repositories of `user`, most recently pushed first. */
+export async function loadRepos(user: string, client: GitHubClient, { hidden = [] }: { hidden?: string[] } = {}): Promise<Repo[]> {
   const raw = list(await client.json(`/users/${user}/repos?per_page=100&type=owner&sort=pushed`), 'repositories').map(parseRepo);
+  const hide = new Set(hidden.map((n) => n.toLowerCase()));
   const repos = await Promise.all(
     raw
-      .filter((r) => !r.fork)
+      .filter((r) => !r.fork && !hide.has(r.name.toLowerCase()))
       .map(async (r): Promise<Repo> => {
         const [times, readme] = await Promise.all([commitTimes(client, user, r.name), client.text(`/repos/${user}/${r.name}/readme`)]);
         const iso = (t: number | undefined) => (t === undefined ? null : new Date(t).toISOString());
@@ -171,6 +174,6 @@ export function getRepos(): Promise<Repo[]> {
   // Astro exposes non-public variables from the build environment to server code.
   const token: string | undefined = import.meta.env.GITHUB_TOKEN;
   if (!token) console.warn('[github] GITHUB_TOKEN is not set: using the anonymous limit of 60 requests an hour.');
-  cache ??= loadRepos(GITHUB_USER, githubClient({ token }));
+  cache ??= loadRepos(GITHUB_USER, githubClient({ token }), { hidden: HIDDEN_REPOS });
   return cache;
 }
