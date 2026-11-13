@@ -32,3 +32,10 @@ export const SITE: SiteMetadata = {
     crates: `https://crates.io/users/${GITHUB_USER}`,
   },
 };
+
+/**
+ * The home page's link preview image (src/assets/og-card.png): the wordmark on a frosted
+ * panel over the site's dithered sky and its sun. It describes the card and its text, so
+ * someone who sees only the alt text knows what the unfurled link shows.
+ */
+export const OG_IMAGE_ALT = `${GITHUB_USER} in large type on a frosted panel over a pixel-dithered blue cloud sky with a small yellow sun`;

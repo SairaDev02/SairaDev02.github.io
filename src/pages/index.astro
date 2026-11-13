@@ -1,5 +1,6 @@
 ---
 // Home page: the owner's public repositories as a playlist, played on a dithered CD player.
+import { getImage } from 'astro:assets';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import CdPlayer from '../components/CdPlayer.astro';
 import NowPlaying from '../components/NowPlaying.astro';
@@ -7,19 +8,29 @@ import PlaylistHeader from '../components/PlaylistHeader.astro';
 import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import TrackList from '../components/TrackList.astro';
+import ogCard from '../assets/og-card.png';
 import { dotDate, toTrack } from '../lib/format';
 import { GITHUB_USER, getRepos } from '../lib/github';
 import { profileGraph } from '../lib/jsonld';
-import { SITE } from '../lib/site';
+import { OG_IMAGE_ALT, SITE } from '../lib/site';
 import { siteModifiedAtBuild } from '../lib/site-date';
 
 const repos = await getRepos();
 if (!repos.length) throw new Error(`No public repositories found for ${GITHUB_USER}.`);
 const lastPush = dotDate(repos[0].pushedAt);
 const jsonLd = profileGraph(SITE, await siteModifiedAtBuild());
+// The committed card, served at its content-hashed /_astro/ URL. The output format is
+// explicit: getImage otherwise re-encodes to webp.
+const ogImage = await getImage({ src: ogCard, format: 'png' });
 ---
 
-<BaseLayout title={SITE.title} description={SITE.description} canonical={SITE.url} jsonLd={jsonLd}>
+<BaseLayout
+  title={SITE.title}
+  description={SITE.description}
+  canonical={SITE.url}
+  jsonLd={jsonLd}
+  image={{ src: ogImage.src, type: `image/${ogCard.format}`, width: ogCard.width, height: ogCard.height, alt: OG_IMAGE_ALT }}
+>
   <div class="page">
     <div class="sky" aria-hidden="true"></div>
     <SiteHeader lastPush={lastPush} />
