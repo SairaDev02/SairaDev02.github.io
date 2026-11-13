@@ -1,22 +1,26 @@
 ---
-// Footer columns. Copy marked [placeholder] waits for the owner's text.
-import { GITHUB_USER } from '../lib/github';
+// Footer: a column per ready section that has footer content. Only Contact has any today,
+// so the footer never shows an empty section or a placeholder.
+import { READY_SECTIONS } from '../lib/sections';
+import { SITE } from '../lib/site';
+
+const contact = READY_SECTIONS.find((s) => s.id === 'contact');
+const shown = (url: string) => url.replace(/^https:\/\//, '');
 ---
 
 <footer class="wrap foot">
-  <div id="writing">
-    <p class="label">Writing</p>
-    <p class="caption">No posts yet.</p>
-  </div>
-  <div id="resume">
-    <p class="label">Resume</p>
-    <p class="caption">Coming soon.</p>
-  </div>
-  <div id="contact">
-    <p class="label">Contact</p>
-    <p><a href={`https://github.com/${GITHUB_USER}`}>github.com/{GITHUB_USER}</a><br />[email placeholder]</p>
-  </div>
-  <p class="label mantra">Build<br />Break<br />Ship<br />Repeat<br /><span class="label-dim">[placeholder]</span></p>
+  {
+    contact && (
+      <div id={contact.id}>
+        <p class="label">{contact.label}</p>
+        <p>
+          <a href={SITE.profiles.github} rel="me">{shown(SITE.profiles.github)}</a>
+          <br />
+          <a href={SITE.profiles.crates} rel="me">{shown(SITE.profiles.crates)}</a>
+        </p>
+      </div>
+    )
+  }
 </footer>
 
 <style>
@@ -30,6 +34,4 @@ import { GITHUB_USER } from '../lib/github';
     border-top: 1px solid var(--line);
   }
   .foot p { margin: 0 0 6px; }
-  .caption { font: 400 13px/1.65 var(--body); color: var(--muted); }
-  .mantra { line-height: 1.7; }
 </style>
