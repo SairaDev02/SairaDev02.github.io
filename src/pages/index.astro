@@ -14,6 +14,7 @@ import { GITHUB_USER, getRepos } from '../lib/github';
 import { profileGraph } from '../lib/jsonld';
 import { OG_IMAGE_ALT, SITE } from '../lib/site';
 import { siteModifiedAtBuild } from '../lib/site-date';
+import { serializeTracks } from '../lib/tracks';
 
 const repos = await getRepos();
 if (!repos.length) throw new Error(`No public repositories found for ${GITHUB_USER}.`);
@@ -45,7 +46,7 @@ const ogImage = await getImage({ src: ogCard, format: 'png' });
     <SiteFooter />
     <NowPlaying repos={repos} />
   </div>
-  <script type="application/json" id="tracks" set:html={JSON.stringify(repos.map(toTrack))} />
+  <script type="application/json" id="tracks" set:html={serializeTracks(repos.map(toTrack))} />
 </BaseLayout>
 
 <script>
