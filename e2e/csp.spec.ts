@@ -1,7 +1,7 @@
 // The site's security policy: a meta Content Security Policy with hashed inline styles,
 // Trusted Types enforced, and no violation on load or while the page is used. Built from
 // e2e/fixtures/github.json.
-import type { ConsoleMessage, Page } from '@playwright/test';
+import type { APIRequestContext, ConsoleMessage, Page } from '@playwright/test';
 import { expect, test } from './test';
 
 const CUED_REPO = 'https://github.com/SairaDev02/paper-lantern';
@@ -90,6 +90,23 @@ const expectPolicy = async (page: Page) => {
   const style = directives.get('style-src') ?? [];
   expect(style, 'style-src').toContain("'self'");
   expect(style.filter((source) => IS_SHA256.test(source)).length, 'style-src hashes').toBeGreaterThan(0);
+
+  // Inline style is only allowed through hashes too: no directive may switch that off, and
+  // the page needs no style attributes, so there is no `style-src-attr` exception.
+  for (const [name, sources] of directives) {
+    expect(sources, `${name} directive`).not.toContain("'unsafe-inline'");
+    expect(sources, `${name} directive`).not.toContain("'unsafe-hashes'");
+  }
+  expect(directives.has('style-src-attr'), 'style-src-attr directive').toBe(false);
+};
+
+/**
+ * The page as served carries no `style` attribute, so the policy has nothing to allow for
+ * one. (Scripts may still set styles through the CSSOM, which a CSP does not govern.)
+ */
+const expectNoStyleAttributes = async (request: APIRequestContext, path: string) => {
+  const html = await (await request.get(path)).text();
+  expect(html.match(/<[^>]+\sstyle\s*=/gi) ?? [], `style attributes in ${path}`).toEqual([]);
 };
 
 /**
@@ -115,21 +132,23 @@ const expectInlineScriptsHashed = async (page: Page) => {
 };
 
 test.describe('policy on every page', () => {
-  test('the home page carries the hashed policy with Trusted Types enforced', async ({ page }) => {
+  test('the home page carries the hashed policy with Trusted Types enforced', async ({ page, request }) => {
     await page.goto('/');
     await expectPolicy(page);
     await expectInlineScriptsHashed(page);
+    await expectNoStyleAttributes(request, '/');
   });
 
-  test('the 404 page carries the same policy', async ({ page }) => {
+  test('the 404 page carries the same policy', async ({ page, request }) => {
     expect((await page.goto('/no-such-track'))?.status()).toBe(404);
     await expectPolicy(page);
     await expectInlineScriptsHashed(page);
+    await expectNoStyleAttributes(request, '/no-such-track');
   });
 });
 
 test.describe('nothing is blocked', () => {
-  test('loads the inlined stylesheet, the style attributes, the fonts, the JSON-LD and the tracks JSON', async ({ page }) => {
+  test('loads the inlined stylesheet, the barcode and grid styles, the fonts, the JSON-LD and the tracks JSON', async ({ page }) => {
     const fonts: string[] = [];
     page.on('response', (response) => {
       if (response.url().endsWith('.woff2') && response.status() === 200) fonts.push(new URL(response.url()).pathname);
@@ -144,8 +163,8 @@ test.describe('nothing is blocked', () => {
       'rgb(29, 63, 208)',
     );
 
-    // The two style attributes apply: the barcode's bar widths and the player's grid size.
-    // A blocked style attribute leaves every bar zero-width and the grid unset.
+    // The barcode's bar widths and the player's grid size apply. A blocked rule leaves
+    // every bar zero-width and the grid unset.
     const bars = await page
       .locator('.barcode i')
       .evaluateAll((all) => all.map((bar) => parseFloat(getComputedStyle(bar).width)));

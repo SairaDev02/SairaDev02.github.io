@@ -11,7 +11,9 @@ interface Props {
   lastPush?: string;
 }
 const { lastPush } = Astro.props;
-// Barcode bar widths derived from the handle: decoration with a stable source.
+// Barcode bar widths (1-3 units) derived from the handle: decoration with a stable source.
+// Each width is a class, not a style attribute, so the page's CSP needs no exception for
+// inline style attributes.
 const bars = [...GITHUB_USER].flatMap((ch) => {
   const c = ch.charCodeAt(0);
   return [1 + (c % 3), 1 + ((c >> 2) % 2), 1 + ((c >> 3) % 3)];
@@ -22,7 +24,7 @@ const bars = [...GITHUB_USER].flatMap((ch) => {
   <a class="brand" href="/">
     <span class="label">{GITHUB_USER} <sup>™</sup></span>
     <span class="barcode" aria-hidden="true">
-      {bars.map((w, i) => <i style={`width:${w * 2}px;margin-right:${i % 3 === 2 ? 3 : 2}px`} />)}
+      {bars.map((w) => <i class={`w${w}`} />)}
     </span>
   </a>
   {lastPush && (
@@ -61,7 +63,12 @@ const bars = [...GITHUB_USER].flatMap((ch) => {
     width: fit-content;
   }
   .barcode { display: flex; height: 18px; }
-  .barcode i { display: block; height: 100%; background: var(--accent); }
+  .barcode i { display: block; height: 100%; margin-right: 2px; background: var(--accent); }
+  /* Bars come in threes, one per handle character: a wider gap after each group. */
+  .barcode i:nth-child(3n) { margin-right: 3px; }
+  .barcode .w1 { width: 2px; }
+  .barcode .w2 { width: 4px; }
+  .barcode .w3 { width: 6px; }
 
   .push { display: none; align-items: center; gap: 12px; margin: 0; }
   @media (min-width: 900px) {

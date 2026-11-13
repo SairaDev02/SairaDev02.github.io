@@ -2,6 +2,7 @@
 // The CD player picture in its frame, with the LCD faceplate underneath. The canvas is
 // drawn by scripts/player/cd-player.ts; the grid size here is the wide one and is replaced
 // at runtime on phones.
+import { createHash } from 'node:crypto';
 import { NARROW, WIDE } from '../scripts/player/geometry';
 import Lcd from './Lcd.astro';
 import { GITHUB_USER } from '../lib/github';
@@ -10,12 +11,17 @@ interface Props {
   count: number;
 }
 const { count } = Astro.props;
-// Grid sizes for the CSS that sizes the canvas before any script runs.
-const grids = `--wide-w: ${WIDE.W}; --wide-h: ${WIDE.H}; --narrow-w: ${NARROW.W}; --narrow-h: ${NARROW.H}`;
+// Grid sizes for the CSS that sizes the canvas before any script runs. They come from
+// geometry.ts, so they are written as an inline style element rather than in the scoped
+// <style> below. Its hash goes into the page's CSP: a style attribute would need an
+// `'unsafe-inline'` exception, a hashed element needs none.
+const grids = `[data-player]{--wide-w:${WIDE.W};--wide-h:${WIDE.H};--narrow-w:${NARROW.W};--narrow-h:${NARROW.H}}`;
+Astro.csp?.insertStyleHash(`sha256-${createHash('sha256').update(grids).digest('base64')}`);
 const alt = `A CD player in a cloudy sky beside ${count} discs, one per public repository. Loading a disc into the player opens that repository; the track list below does the same.`;
 ---
 
-<div class="wrap stage" data-player style={grids}>
+<style is:inline set:html={grids}></style>
+<div class="wrap stage" data-player>
   <span class="rail label" aria-hidden="true">{GITHUB_USER}™ · public work</span>
   <div class="frame">
     <canvas width={WIDE.W} height={WIDE.H} role="img" aria-label={alt}></canvas>
