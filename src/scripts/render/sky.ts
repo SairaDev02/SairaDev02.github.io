@@ -1,4 +1,5 @@
 // Drifting cloud sky painted into a scene's albedo wherever nothing solid stands.
+import { yieldToMain } from './canvas';
 import { cloudNoise } from './noise';
 
 const smooth = (a: number, b: number, v: number) => {
@@ -7,15 +8,18 @@ const smooth = (a: number, b: number, v: number) => {
 };
 
 export class Sky {
-  private readonly far: Float32Array;
-  private readonly near: Float32Array;
-
-  constructor(
+  private constructor(
     private readonly W: number,
     private readonly H: number,
-  ) {
-    this.far = cloudNoise(W, H, 7);
-    this.near = cloudNoise(W, H, 23);
+    private readonly far: Float32Array,
+    private readonly near: Float32Array,
+  ) {}
+
+  /** Each cloud layer is a sizeable computation, so they run as separate tasks. */
+  static async build(W: number, H: number): Promise<Sky> {
+    const far = cloudNoise(W, H, 7);
+    await yieldToMain();
+    return new Sky(W, H, far, cloudNoise(W, H, 23));
   }
 
   /**

@@ -25,10 +25,13 @@ export async function mountCdPlayer(root: HTMLElement, tracks: readonly Track[],
   let press: { id: number; x: number; y: number } | null = null;
 
   const updateLcd = () => showLcd(lcdView(player.get(), scene?.drag ?? null, tracks));
-  const loop = frameLoop(canvas, (t, still) => {
-    if (!scene) return;
-    if (scene.frame(t, player.get(), still)) player.arrive();
-    ctx.putImageData(scene.image, 0, 0);
+  const loop = frameLoop(canvas, function* (t, still) {
+    const s = scene;
+    if (!s) return;
+    const arrived = yield* s.frame(t, player.get(), still);
+    if (arrived) player.arrive();
+    // A grid switch may have replaced the scene (and resized the canvas) meanwhile.
+    if (s === scene) ctx.putImageData(s.image, 0, 0);
   });
   // Under reduced motion the loop draws only on demand.
   const redraw = () => reducedMotion() && loop.redraw();

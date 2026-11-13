@@ -20,6 +20,8 @@ const BODY_Z = 16;
 const CARRY_Z = 26;
 const HOVER_Z = 7;
 const LIGHT_Z = 90;
+/** Row bands the lighting is split into, each a step of its own (see frame()). */
+const LIGHT_BANDS = 4;
 
 const ease = (k: number) => (k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2);
 const clamp01 = (k: number) => Math.min(1, Math.max(0, k));
@@ -73,17 +75,17 @@ export class CdScene {
     readonly g: Geometry,
     private readonly colours: Colours,
     private readonly display: { idle: Uint8Array; numbers: Uint8Array[] },
-    brand: Uint8Array,
     layout: { r: number; slots: [number, number][]; masks: Uint8Array[] },
+    parts: { field: HeightField; body: Uint8Array; sky: Sky },
   ) {
     const { W, H } = g;
     this.image = new ImageData(W, H);
     this.out = new Uint32Array(this.image.data.buffer);
-    this.field = new HeightField(W, H);
+    this.field = parts.field;
     this.Em = new Float32Array(W * H);
-    this.sky = new Sky(W, H);
+    this.sky = parts.sky;
     this.light = new PointerLight((t) => [W / 2 + 220 * Math.sin(t * 0.28), H / 2 - 20 + 55 * Math.cos(t * 0.5)]);
-    this.body = this.buildPlayer(brand);
+    this.body = parts.body;
     const f = this.field;
     this.base = { H: f.H.slice(), AL: f.AL.slice(), AO: f.AO.slice(), SP: f.SP.slice() };
     this.r = layout.r;
@@ -102,45 +104,17 @@ export class CdScene {
       Promise.all(slots.map((_, i) => digits(label(i)))),
       Promise.all(slots.map((_, i) => textMask(MW, MW, [{ text: label(i), x: r, y: r - (r + 9) / 2, size: r > 24 ? 13 : 10, weight: 700 }]))),
     ]);
-    // The masks and the scene's own setup are each sizeable: run them as separate tasks.
+    // The masks, the sky, the player and the scene's own setup are each sizeable: run
+    // them as separate tasks.
     await yieldToMain();
-    return new CdScene(g, colours, { idle, numbers }, brand, { r, slots, masks });
-  }
-
-  /** Static player: body, recessed tray with spindle, buttons, brand lettering. */
-  private buildPlayer(brand: Uint8Array): Uint8Array {
-    const { W, H, body: b, tray, buttons } = this.g;
-    const f = this.field;
-    const body = new Uint8Array(W * H);
-    for (let y = b.y0; y < b.y1; y++) for (let x = b.x0; x < b.x1; x++) body[y * W + x] = 1;
-    f.raise(body, BODY_Z, 6);
-    for (let y = b.y0; y < b.y1; y++)
-      for (let x = b.x0; x < b.x1; x++) {
-        const p = y * W + x;
-        const r = Math.hypot(x + 0.5 - tray.x, y + 0.5 - tray.y);
-        f.AL[p] = brand[p] ? 0.2 : 0.62;
-        f.SP[p] = 0.15;
-        if (r < tray.r) {
-          // Recessed well with a short slope at its lip; spindle in the centre.
-          const lip = clamp01((r - (tray.r - 3)) / 3);
-          f.H[p] = WELL_Z + (BODY_Z - WELL_Z) * lip;
-          f.AL[p] = 0.38;
-          if (r < 7) {
-            f.H[p] = WELL_Z + 5 * Math.sqrt(1 - (r / 7) ** 2);
-            f.AL[p] = 0.85;
-            f.SP[p] = 0.6;
-          }
-        }
-        for (const [bx, by] of buttons) {
-          const d = Math.hypot(x + 0.5 - bx, y + 0.5 - by);
-          if (d < 7) {
-            f.H[p] = BODY_Z + 4 * Math.sqrt(1 - (d / 7) ** 2);
-            f.AL[p] = 0.8;
-            f.SP[p] = 0.4;
-          }
-        }
-      }
-    return body;
+    const sky = await Sky.build(W, H);
+    await yieldToMain();
+    const field = new HeightField(W, H);
+    const body = raiseBody(g, field);
+    await yieldToMain();
+    shapePlayer(g, field, brand);
+    await yieldToMain();
+    return new CdScene(g, colours, { idle, numbers }, { r, slots, masks }, { field, body, sky });
   }
 
   // ---------- queries and gestures (grid coordinates) ----------
@@ -208,11 +182,14 @@ export class CdScene {
   // ---------- frame ----------
 
   /**
-   * Renders one frame into `image`. `still` (reduced motion, or the still frames shown
-   * before the first input) skips easing and the fade-in.
+   * Renders one frame into `image`, in steps: each `yield` is a point where the caller
+   * may hand the main thread back to the browser, so no single task holds it for the whole
+   * frame on a slow device. Run it to the end before showing `image` or starting another
+   * frame. `still` (reduced motion, or the still frames shown before the first input)
+   * skips easing and the fade-in.
    * Returns true once a running load reaches the moment to navigate.
    */
-  frame(t: number, s: PlayerSnapshot, still: boolean): boolean {
+  *frame(t: number, s: PlayerSnapshot, still: boolean): Generator<void, boolean> {
     const { W, H, tray, display: dsp, led } = this.g;
     const { field, Em, discs, drag } = this;
     if (this.t0 < 0) this.t0 = still ? -1e9 : t;
@@ -255,11 +232,19 @@ export class CdScene {
     discs.forEach((d, i) => i !== top && this.drawDisc(d, i === s.hover));
     if (top >= 0) this.drawDisc(discs[top], true);
 
+    yield;
     field.finalize();
-    field.light(this.light.x, this.light.y, LIGHT_Z, { K: 2.1, R2: 110000, slices: 8, ambGround: 0.42 });
+    // Gestures between steps only aim the light; it moves in step() above, so every band
+    // is lit from the same point.
+    const { x: lx, y: ly } = this.light;
+    for (let band = 0; band < LIGHT_BANDS; band++) {
+      yield;
+      field.light(lx, ly, LIGHT_Z, { K: 2.1, R2: 110000, slices: 8, ambGround: 0.42 }, Math.round((band * H) / LIGHT_BANDS), Math.round(((band + 1) * H) / LIGHT_BANDS));
+    }
+    yield;
 
     // Emissive layer: the pointer star, display digits, LED and sparkles.
-    sparkle(Em, W, H, this.light.x, this.light.y, 1);
+    sparkle(Em, W, H, lx, ly, 1);
     const playing = load !== null && e >= LOAD.drop;
     const cue = playing ? load.i : drag?.overTray ? drag.i : s.hover;
     const shown = cue >= 0 ? this.display.numbers[cue] : this.display.idle;
@@ -328,7 +313,7 @@ export class CdScene {
         const p = y * W + x;
         const dx = x + 0.5 - d.x;
         const dy = y + 0.5 - d.y;
-        const r = Math.hypot(dx, dy);
+        const r = Math.sqrt(dx * dx + dy * dy);
         if (r >= R) {
           // Contact shadow on the ground while the disc lies flat.
           if (d.z < 3 && r < R + 10 && !this.body[p]) AO[p] = Math.max(AO[p], 0.26 * Math.exp(-(r - R) / 4));
@@ -359,4 +344,45 @@ export class CdScene {
         }
       }
   }
+}
+
+// The static player, built in two steps (each a task of its own): the raised body, then
+// the recessed tray with spindle, buttons and brand lettering on it.
+
+function raiseBody(g: Geometry, f: HeightField): Uint8Array {
+  const { W, H, body: b } = g;
+  const body = new Uint8Array(W * H);
+  for (let y = b.y0; y < b.y1; y++) for (let x = b.x0; x < b.x1; x++) body[y * W + x] = 1;
+  f.raise(body, BODY_Z, 6);
+  return body;
+}
+
+function shapePlayer(g: Geometry, f: HeightField, brand: Uint8Array) {
+  const { W, body: b, tray, buttons } = g;
+  for (let y = b.y0; y < b.y1; y++)
+    for (let x = b.x0; x < b.x1; x++) {
+      const p = y * W + x;
+      const r = Math.hypot(x + 0.5 - tray.x, y + 0.5 - tray.y);
+      f.AL[p] = brand[p] ? 0.2 : 0.62;
+      f.SP[p] = 0.15;
+      if (r < tray.r) {
+        // Recessed well with a short slope at its lip; spindle in the centre.
+        const lip = clamp01((r - (tray.r - 3)) / 3);
+        f.H[p] = WELL_Z + (BODY_Z - WELL_Z) * lip;
+        f.AL[p] = 0.38;
+        if (r < 7) {
+          f.H[p] = WELL_Z + 5 * Math.sqrt(1 - (r / 7) ** 2);
+          f.AL[p] = 0.85;
+          f.SP[p] = 0.6;
+        }
+      }
+      for (const [bx, by] of buttons) {
+        const d = Math.hypot(x + 0.5 - bx, y + 0.5 - by);
+        if (d < 7) {
+          f.H[p] = BODY_Z + 4 * Math.sqrt(1 - (d / 7) ** 2);
+          f.AL[p] = 0.8;
+          f.SP[p] = 0.4;
+        }
+      }
+    }
 }

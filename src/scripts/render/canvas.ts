@@ -46,33 +46,63 @@ const WAKE_EVENTS = ['pointermove', 'pointerdown', 'keydown', 'wheel', 'scroll',
 const COST_SPACING = 2;
 
 /**
+ * One frame as a sequence of steps. The loop yields to the main thread between steps, so
+ * input and rendering get through during a frame that is long on a slow device.
+ */
+export type FrameSteps = Iterator<unknown, unknown>;
+
+/**
  * Calls `frame(seconds, still)` while the canvas is on screen and the tab is visible: at
- * most `fps` times a second, and less often when frames are expensive.
+ * most `fps` times a second, and less often when frames are expensive. It runs the
+ * returned steps, if any, to the end before starting another frame.
  *
  * Until the first pointer, key, wheel, scroll or touch input it draws single still frames
  * only (on entering the screen and on `redraw()`), so loading the page costs one render
  * rather than a continuous loop. Under reduced motion it stays that way. `still` is true
  * for these single frames. `stop()` detaches everything.
  */
-export function frameLoop(canvas: HTMLCanvasElement, frame: (t: number, still: boolean) => void, fps = 30) {
+export function frameLoop(canvas: HTMLCanvasElement, frame: (t: number, still: boolean) => FrameSteps | void, fps = 30) {
   let visible = false;
   let awake = false;
   let raf = 0;
   let last = 0;
-  /** Smoothed cost of one frame, in ms. */
+  /** Smoothed cost of one frame, in ms of main-thread time (the sum of its steps). */
   let cost = 0;
-  const run = (now: number) => {
-    const t0 = performance.now();
-    frame(now / 1000, !awake || reducedMotion());
-    const d = performance.now() - t0;
-    cost = cost ? 0.8 * cost + 0.2 * d : d;
+  /** A frame is between its steps. Frames share the scene's buffers, so one at a time. */
+  let running = false;
+  /** A redraw was asked for while a frame was running. */
+  let again = false;
+  /** A frame was drawn since the canvas last came on screen. */
+  let fresh = false;
+  const run = async (now: number) => {
+    running = true;
+    let spent = 0;
+    try {
+      const steps = frame(now / 1000, !awake || reducedMotion());
+      for (;;) {
+        const t0 = performance.now();
+        const done = !steps || steps.next().done;
+        spent += performance.now() - t0;
+        if (done) break;
+        await yieldToMain();
+      }
+    } finally {
+      // A frame that throws must not stop the loop for good.
+      running = false;
+    }
+    cost = cost ? 0.8 * cost + 0.2 * spent : spent;
+    if (again) draw();
   };
-  const draw = () => run(performance.now());
+  const draw = () => {
+    fresh = true;
+    again = running;
+    if (!running) void run(performance.now());
+  };
   const tick = (now: number) => {
     raf = requestAnimationFrame(tick);
-    if (now - last < Math.max(1000 / fps, COST_SPACING * cost) - 2) return;
+    if (running || now - last < Math.max(1000 / fps, COST_SPACING * cost) - 2) return;
     last = now;
-    run(now);
+    void run(now);
   };
   const start = () => {
     if (!raf && awake && visible && !document.hidden && !reducedMotion()) raf = requestAnimationFrame(tick);
@@ -80,6 +110,7 @@ export function frameLoop(canvas: HTMLCanvasElement, frame: (t: number, still: b
   const pause = () => {
     cancelAnimationFrame(raf);
     raf = 0;
+    fresh = false;
   };
   const unwatch = () => WAKE_EVENTS.forEach((e) => removeEventListener(e, wake, true));
   const wake = () => {
@@ -91,7 +122,8 @@ export function frameLoop(canvas: HTMLCanvasElement, frame: (t: number, still: b
   const io = new IntersectionObserver(([e]) => {
     visible = e.isIntersecting;
     if (visible) {
-      draw();
+      // Skip the frame when one was just drawn, as on page load, where setup draws first.
+      if (!fresh) draw();
       start();
     } else pause();
   });
