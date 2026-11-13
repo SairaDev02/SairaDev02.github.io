@@ -235,7 +235,9 @@ const { repos } = Astro.props;
 
   .lyrics {
     color: #fff;
-    background: linear-gradient(165deg, #2f55e4 0%, #1d3fd0 45%, #13238a 100%);
+    /* Deep cobalt rather than bright: every line here is read against the lightest point of
+       this gradient, so it starts dark enough for 4.5:1 text (measured, ticket #31). */
+    background: linear-gradient(165deg, #24409f 0%, #1a3189 45%, #0f1c66 100%);
     box-shadow: 0 -20px 50px -20px rgb(19 35 138 / 0.7);
   }
   .lyrics .panel-title { color: var(--sun); }
@@ -243,20 +245,20 @@ const { repos } = Astro.props;
   .lines { list-style: none; margin: 0 auto; padding: 0; max-width: 58rem; }
   .lines :global(li) {
     font: 600 clamp(1.1rem, 2.2vw, 1.6rem)/1.35 var(--ui);
-    color: rgb(255 255 255 / 0.5);
+    color: rgb(255 255 255 / 0.66);
     margin: 0 0 6px;
     transition: color 0.3s;
   }
-  .lines :global(li.past) { color: rgb(255 255 255 / 0.82); }
+  .lines :global(li.past) { color: rgb(255 255 255 / 0.9); }
   .lines :global(li.now) { color: var(--sun); }
   .lines :global(li.tag) {
     font: 500 12px/1.4 var(--ui);
     letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: rgb(255 255 255 / 0.7);
+    color: rgb(255 255 255 / 0.8);
     margin: 18px 0 8px;
   }
-  .lines :global(li.empty) { color: rgb(255 255 255 / 0.8); font-weight: 400; }
+  .lines :global(li.empty) { color: rgb(255 255 255 / 0.85); font-weight: 400; }
 
   .queue {
     align-self: flex-end;

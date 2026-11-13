@@ -145,7 +145,9 @@ export function mountDock(dock: HTMLElement, tracks: readonly Track[], player: P
     li.querySelector('[data-q-num]')!.textContent = trackNo(i);
     li.querySelector('[data-q-name]')!.textContent = t.name;
     li.querySelector('[data-q-meta]')!.textContent = `${languageOf(t)} · ${plural(t.commits, 'commit')}`;
-    li.querySelector('[data-q-pick]')!.setAttribute('aria-label', now ? `${t.name}, cued` : `Cue ${t.name}`);
+    // No aria-label: the button's accessible name is its visible text (name, language,
+    // commits), so speech input can say what it sees. The cued one reads as pressed.
+    li.querySelector('[data-q-pick]')!.setAttribute('aria-pressed', String(now));
     const [up, down] = li.querySelectorAll<HTMLButtonElement>('[data-move]');
     up.setAttribute('aria-label', `Move ${t.name} up`);
     down.setAttribute('aria-label', `Move ${t.name} down`);
