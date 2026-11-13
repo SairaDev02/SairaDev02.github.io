@@ -34,15 +34,9 @@ export default defineConfig({
         "require-trusted-types-for 'script'",
         "trusted-types 'none'",
       ],
-      // Astro hashes the inline styles and scripts it emits. A hash cannot cover a style
-      // attribute, and two components set one (the header's barcode bar widths and the CD
-      // player's canvas grid size), so `'unsafe-inline'` is scoped to `style-src-attr`
-      // only: it allows those attributes and nothing else, while the inlined stylesheet
-      // still needs its hash in `style-src`. `'self'` is not listed: without a resource
-      // scoped to `style-src` itself, Astro emits it as that directive's baseline.
-      styleDirective: {
-        resources: [{ resource: "'unsafe-inline'", kind: 'attribute' }],
-      },
+      // Astro hashes the inline styles and scripts it emits; CdPlayer.astro adds the hash
+      // of its own inline style element. The pages carry no style attributes, so nothing
+      // needs `'unsafe-inline'`.
     },
   },
   integrations: [ogCardRoute],
