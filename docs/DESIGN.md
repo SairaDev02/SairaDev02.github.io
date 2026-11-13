@@ -28,7 +28,10 @@ now-playing dock, lyrics and a queue.
 - Everything lit in the picture uses the four blue levels. Only emissive things (the
   pointer star, the display digits, the LED, sparkles) use the two yellows.
 - Yellow is never text on the pale page: too little contrast. Yellow fills carry navy text.
-- Colour contrast has not been measured yet.
+- Contrast is measured on rendered pixels at the worst point, not assumed. Dim text sits on
+  dark navy, never on the bright `--shade-1` cobalt: the Lyrics panel's gradient therefore
+  starts at `#24409f`, so every line, title, tag and message reaches 4.5:1 on phones and
+  desktops alike (values recorded on ticket #31).
 
 ## Type
 

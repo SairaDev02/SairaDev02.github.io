@@ -6,9 +6,22 @@ export const test = base.extend<{ pageErrors: string[] }>({
   pageErrors: [
     async ({ page }, use) => {
       const errors: string[] = [];
+      // A navigation the test makes on purpose can answer 404: that is the response the
+      // unknown-path test asks for, so Chromium logging it as a failed resource is expected
+      // and not a console error. Any other error status (a 500) stays an error. Assets the
+      // document then requests are still reported, because their URLs are not navigations.
+      const failedNavigations = new Set<string>();
       page.on('pageerror', (e) => errors.push(e.message));
+      page.on('response', (response) => {
+        const request = response.request();
+        if (request.isNavigationRequest() && request.frame() === page.mainFrame() && response.status() === 404) {
+          failedNavigations.add(request.url());
+        }
+      });
       page.on('console', (m) => {
-        if (m.type() === 'error') errors.push(m.text());
+        if (m.type() !== 'error') return;
+        if (m.text().startsWith('Failed to load resource') && failedNavigations.has(m.location().url)) return;
+        errors.push(m.text());
       });
       await page.context().route('https://github.com/**', (route) =>
         route.fulfill({ contentType: 'text/html', body: '<title>GitHub stub</title>' }),

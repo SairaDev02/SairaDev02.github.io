@@ -1,0 +1,119 @@
+---
+// The link preview card's source: variant A, "Sky wordmark". Dev-only, injected at
+// /og-card by an inline integration in astro.config.mjs, and exported to
+// src/assets/og-card.png by `npm run og:export`. Its output must never contain nightly
+// repository data, so it reads only the stylesheet's tokens and static strings.
+// The design is the prototype's chosen card: og-A.prototype.png on branch
+// prototype/link-preview-image (commit ec7f3f5).
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Link preview card (dev only)" description="Dev-only source of the link preview image.">
+  <div class="card" id="og-card">
+    <canvas class="sky" width="320" height="192"></canvas>
+    <div class="plate">
+      <span class="lab">PUBLIC REPOSITORIES</span>
+      <span class="mark">SairaDev02</span>
+      <span class="url">sairadev02.github.io</span>
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  import { readColours } from '../scripts/render/canvas';
+  import { quantizeEmissive } from '../scripts/render/dither';
+  import { Sky } from '../scripts/render/sky';
+
+  // The prototype's fixed inputs: the sky's two cloud seeds are inside Sky.build, so the
+  // time and the sun's position/radius are all that vary from frame to frame on the site.
+  const TIME = 40;
+  const SUN_X = 264;
+  const SUN_Y = 52;
+  const SUN_R = 22;
+
+  const card = document.getElementById('og-card') as HTMLElement;
+  const canvas = card.querySelector('canvas') as HTMLCanvasElement;
+  const { width: W, height: H } = canvas;
+
+  async function draw() {
+    const root = document.documentElement;
+    const pal = readColours(root, ['--shade-0', '--shade-1', '--shade-2', '--shade-3']);
+    const light = readColours(root, ['--sun', '--sun-core']);
+
+    const AL = new Float32Array(W * H);
+    const sky = await Sky.build(W, H);
+    sky.paint(AL, new Uint8Array(W * H), TIME);
+
+    // The sun: an emissive radial glow dithered into the two light colours, so it fades
+    // from the core through yellow into the sky's four levels.
+    const Em = new Float32Array(W * H);
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        const d = Math.hypot(x - SUN_X, y - SUN_Y) / SUN_R;
+        if (d < 1) Em[y * W + x] = d < 0.35 ? 1 : 1 - (d - 0.35) / 0.65;
+      }
+    }
+    const img = new ImageData(W, H);
+    quantizeEmissive(AL, Em, new Uint32Array(img.data.buffer), pal, light, W);
+    canvas.getContext('2d')!.putImageData(img, 0, 0);
+
+    // The export script waits for this: the text must be set in the self-hosted faces, so
+    // a re-export doesn't race the fonts and fall back to a local one.
+    const faces = ['400 22px "Lexend Variable"', '700 104px "Lexend Exa Variable"', '400 24px "IBM Plex Mono"'];
+    await Promise.all(faces.map((face) => document.fonts.load(face)));
+    await document.fonts.ready;
+    card.dataset.ogReady = 'true';
+  }
+
+  await draw();
+</script>
+
+<style>
+  /* 1200x630, the Open Graph card size. The 2:1 safe area that some platforms crop to is
+     the middle 1200x600, so vertical centring in the card is also centring in it. */
+  .card {
+    position: relative;
+    width: 1200px;
+    height: 630px;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--fg);
+  }
+  /* The site's own dithered sky, drawn on a 320x192 grid at 4x and cropped to the card:
+     40px off each side and 69px off the top and bottom leaves the 1200x630 window. */
+  .sky {
+    position: absolute;
+    left: -40px;
+    top: -69px;
+    width: 1280px;
+    height: 768px;
+    display: block;
+    image-rendering: pixelated;
+  }
+  /* A frosted plate on the glass token, left of centre, with the three lines. */
+  .plate {
+    position: absolute;
+    left: 96px;
+    top: 50%;
+    translate: 0 -50%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 36px 48px;
+    background: var(--glass);
+    border: 2px solid var(--line-strong);
+  }
+  .lab {
+    font: 400 22px/1.4 var(--ui);
+    letter-spacing: 0.14em;
+    color: var(--accent);
+  }
+  .mark {
+    font: 700 104px/1.05 var(--wide);
+    letter-spacing: -0.02em;
+  }
+  .url {
+    font: 400 24px/1.4 var(--body);
+    color: var(--muted);
+  }
+</style>

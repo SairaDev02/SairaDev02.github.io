@@ -12,7 +12,7 @@ test.beforeEach(async ({ page }) => {
 
 test.describe('page content', () => {
   test('lists public, non-fork, non-hidden repositories, newest push first', async ({ page }) => {
-    await expect(page).toHaveTitle('SairaDev02 · public work');
+    await expect(page).toHaveTitle('SairaDev02 · public repositories');
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(/SairaDev02\s*public work/);
     await expect(page.getByText('Public playlist · 4 repositories')).toBeVisible();
     await expect(page.getByText('9 commits · Rust / TypeScript · updated 2026.10.20')).toBeVisible();
@@ -158,10 +158,26 @@ test.describe('queue panel', () => {
     await expect(nextUp(page)).toHaveText(['quiet-notes', 'empty-box', 'paper-lantern']);
   });
 
-  test('picking a track cues it', async ({ page }) => {
-    await panel(page).getByRole('button', { name: 'Cue empty-box' }).click();
+  test('picking a track cues it, and the cue buttons report their pressed state', async ({ page }) => {
+    // A cue button is named by its visible text: repository name, then language and commits.
+    const names = [
+      'tidepool Rust · 5 commits',
+      'paper-lantern TypeScript · 3 commits',
+      'quiet-notes Text · 1 commit',
+      'empty-box Text · 0 commits',
+    ];
+    for (const [i, name] of names.entries()) {
+      await expect(panel(page).locator('[data-q-pick]').nth(i)).toHaveAccessibleName(name);
+    }
+    await expect(panel(page).locator('[data-q-pick][aria-pressed="true"]')).toHaveCount(1);
+    await expect(panel(page).locator('[data-q-pick][aria-pressed="false"]')).toHaveCount(3);
+
+    await panel(page).getByRole('button', { name: 'empty-box Text · 0 commits' }).click();
     await expect(dockTitle(page)).toHaveText('04 empty-box');
     await expect(panel(page).locator('[data-q-now] [data-q-name]')).toHaveText('empty-box');
+    // The pressed mark follows the cue into Now playing.
+    await expect(panel(page).locator('[data-q-pick][aria-pressed="true"]')).toHaveAccessibleName('empty-box Text · 0 commits');
+    await expect(panel(page).locator('[data-q-pick][aria-pressed="false"]')).toHaveCount(3);
   });
 });
 
