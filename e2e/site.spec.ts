@@ -7,10 +7,22 @@ const HOME = 'https://sairadev02.github.io/';
 const TITLE = 'SairaDev02 · public repositories';
 const DESCRIPTION =
   'Public repositories of SairaDev02, played as a playlist: names, descriptions, languages and commit history.';
+const OG_ALT =
+  'SairaDev02 in large type on a frosted panel over a pixel-dithered blue cloud sky with a small yellow sun';
 
 /** The content of a `property` or `name` meta tag. */
 const meta = async (page: Page, key: string) =>
   page.locator(`meta[property="${key}"], meta[name="${key}"]`).getAttribute('content');
+
+/**
+ * A PNG's pixel size, read from its header: the 8 signature bytes, then the IHDR chunk's
+ * length and type, then the width and height as big-endian 32-bit integers.
+ */
+const pngSize = (body: Buffer) => {
+  expect(body.subarray(0, 8)).toEqual(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+  expect(body.subarray(12, 16).toString('latin1')).toBe('IHDR');
+  return { width: body.readUInt32BE(16), height: body.readUInt32BE(20) };
+};
 
 interface Graph {
   '@context': unknown;
@@ -44,6 +56,31 @@ test.describe('head metadata', () => {
       .locator('meta[name^="twitter:"]')
       .evaluateAll((tags) => tags.map((tag) => tag.getAttribute('name')));
     expect(twitter).toEqual(['twitter:card']);
+  });
+});
+
+test.describe('link preview image', () => {
+  test('serves a 1200x630 PNG through absolute, content-hashed og:image tags', async ({ page, request }) => {
+    await page.goto('/');
+    const src = (await meta(page, 'og:image')) ?? '';
+    expect(src).toMatch(/^https:\/\/sairadev02\.github\.io\/_astro\/og-card\.[\w-]+\.png$/);
+    expect(await meta(page, 'og:image:type')).toBe('image/png');
+    expect(await meta(page, 'og:image:width')).toBe('1200');
+    expect(await meta(page, 'og:image:height')).toBe('630');
+    expect(await meta(page, 'og:image:alt')).toBe(OG_ALT);
+    // X falls back to og:image, so there are no twitter:image tags.
+    expect(await page.locator('meta[name^="twitter:image"]').count()).toBe(0);
+
+    const res = await request.get(new URL(src).pathname);
+    expect(res.ok()).toBe(true);
+    expect(res.headers()['content-type']).toBe('image/png');
+    const body = await res.body();
+    expect(body.byteLength).toBeLessThan(300 * 1024);
+    expect(pngSize(body)).toEqual({ width: 1200, height: 630 });
+  });
+
+  test('keeps the dev-only card route out of the build', async ({ request }) => {
+    expect((await request.get('/og-card')).status()).toBe(404);
   });
 });
 

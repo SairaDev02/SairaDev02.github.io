@@ -23,8 +23,14 @@ interface Props {
   canonical?: string;
   /** The schema.org graph to embed; leave it out on pages without structured data. */
   jsonLd?: unknown;
+  /**
+   * The page's link preview image; leave it out on pages without one. `src` is the
+   * site's URL for it (hashed under `/_astro/`), made absolute for og:image below.
+   */
+  image?: { src: string; type: string; width: number; height: number; alt: string };
 }
-const { title, description, canonical, jsonLd } = Astro.props;
+const { title, description, canonical, jsonLd, image } = Astro.props;
+const imageUrl = image && new URL(image.src, SITE.url).href;
 ---
 
 <html lang="en">
@@ -40,6 +46,15 @@ const { title, description, canonical, jsonLd } = Astro.props;
     <meta property="og:locale" content="en_US" />
     {canonical && <link rel="canonical" href={canonical} />}
     {canonical && <meta property="og:url" content={canonical} />}
+    {image && (
+      <>
+        <meta property="og:image" content={imageUrl} />
+        <meta property="og:image:type" content={image.type} />
+        <meta property="og:image:width" content={String(image.width)} />
+        <meta property="og:image:height" content={String(image.height)} />
+        <meta property="og:image:alt" content={image.alt} />
+      </>
+    )}
     <meta name="twitter:card" content="summary_large_image" />
     {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
     <meta name="theme-color" content="#dfe9fb" />
