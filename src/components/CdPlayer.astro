@@ -2,7 +2,7 @@
 // The CD player picture in its frame, with the LCD faceplate underneath. The canvas is
 // drawn by scripts/player/cd-player.ts; the grid size here is the wide one and is replaced
 // at runtime on phones.
-import { WIDE } from '../scripts/player/geometry';
+import { NARROW, WIDE } from '../scripts/player/geometry';
 import Lcd from './Lcd.astro';
 import { GITHUB_USER } from '../lib/github';
 
@@ -10,10 +10,12 @@ interface Props {
   count: number;
 }
 const { count } = Astro.props;
+// Grid sizes for the CSS that sizes the canvas before any script runs.
+const grids = `--wide-w: ${WIDE.W}; --wide-h: ${WIDE.H}; --narrow-w: ${NARROW.W}; --narrow-h: ${NARROW.H}`;
 const alt = `A CD player in a cloudy sky beside ${count} discs, one per public repository. Loading a disc into the player opens that repository; the track list below does the same.`;
 ---
 
-<div class="wrap stage" data-player>
+<div class="wrap stage" data-player style={grids}>
   <span class="rail label" aria-hidden="true">{GITHUB_USER}™ · public work</span>
   <div class="frame">
     <canvas width={WIDE.W} height={WIDE.H} role="img" aria-label={alt}></canvas>
@@ -22,7 +24,32 @@ const alt = `A CD player in a cloudy sky beside ${count} discs, one per public r
 </div>
 
 <style>
-  .stage { position: relative; }
+  /*
+   * The canvas size is final from the first paint, so the page never shifts when the
+   * script starts: the largest whole multiple (1 to 6) of the grid that fits the stage in
+   * device pixels, as round(down, available device px, grid px) / dpr. The grid is the
+   * wide one, or the portrait one under the same query as NARROW_QUERY in geometry.ts.
+   * --dpr comes from media queries until player/cd-player.ts sets the exact value.
+   */
+  .stage {
+    position: relative;
+    container-type: inline-size;
+    --dpr: 1;
+    --grid-w: var(--wide-w);
+    --grid-h: var(--wide-h);
+  }
+  @media (max-width: 600px) {
+    .stage { --grid-w: var(--narrow-w); --grid-h: var(--narrow-h); }
+  }
+  @media (resolution >= 1.25dppx) { .stage { --dpr: 1.25; } }
+  @media (resolution >= 1.5dppx) { .stage { --dpr: 1.5; } }
+  @media (resolution >= 1.75dppx) { .stage { --dpr: 1.75; } }
+  @media (resolution >= 2dppx) { .stage { --dpr: 2; } }
+  @media (resolution >= 2.25dppx) { .stage { --dpr: 2.25; } }
+  @media (resolution >= 2.5dppx) { .stage { --dpr: 2.5; } }
+  @media (resolution >= 3dppx) { .stage { --dpr: 3; } }
+  @media (resolution >= 3.5dppx) { .stage { --dpr: 3.5; } }
+  @media (resolution >= 4dppx) { .stage { --dpr: 4; } }
   .frame {
     display: block;
     width: fit-content;
@@ -37,8 +64,13 @@ const alt = `A CD player in a cloudy sky beside ${count} discs, one per public r
   }
   canvas {
     display: block;
+    /* Minus the frame's 2px borders. */
+    --avail: calc((100cqw - 4px) * var(--dpr));
+    --grid: calc(var(--grid-w) * 1px);
+    width: calc(clamp(var(--grid), round(down, var(--avail), var(--grid)), 6 * var(--grid)) / var(--dpr));
     max-width: 100%;
     height: auto;
+    aspect-ratio: var(--grid-w) / var(--grid-h);
     image-rendering: pixelated;
     touch-action: pan-y;
   }
