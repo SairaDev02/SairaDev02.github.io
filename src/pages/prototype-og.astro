@@ -1,0 +1,246 @@
+---
+// PROTOTYPE (throwaway, never merged): link preview image variants for wayfinder ticket
+// "Link preview image". Four 1200x630 cards on one route, switchable with ?variant=A..D
+// and the floating bar (or ← →). Each card is shown full size with the 2:1 safe area,
+// at Mastodon's 640x360 downscale, and inside a mock chat unfurl.
+// No build-time repository data: the image must not change nightly.
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+const variants = [
+  { key: 'A', name: 'Sky wordmark' },
+  { key: 'B', name: 'CD player still' },
+  { key: 'C', name: 'Sleeve / typographic' },
+  { key: 'D', name: 'LCD faceplate' },
+];
+const bars = [3, 1, 2, 1, 1, 3, 2, 1, 3, 1, 2, 2, 1, 3, 1, 1, 2, 3, 1, 2, 1, 3];
+---
+
+<BaseLayout title="PROTOTYPE · link preview image" description="Throwaway prototype.">
+  <main class="proto">
+    <p class="label">Prototype · link preview image · <span data-name></span></p>
+
+    <h2 class="label label-dim">1200 × 630 (dashed: 2:1 safe area, 1200 × 600)</h2>
+    <div class="slot full"><div class="card-host" data-host="full"></div></div>
+
+    <div class="row">
+      <div>
+        <h2 class="label label-dim">640 × 360 (Mastodon stores this)</h2>
+        <div class="slot small"><div class="card-host" data-host="small"></div></div>
+      </div>
+      <div>
+        <h2 class="label label-dim">Chat unfurl (Slack/Discord-like mock)</h2>
+        <div class="unfurl">
+          <div class="bar"></div>
+          <div>
+            <div class="site">SairaDev02</div>
+            <div class="ttl">SairaDev02 · public repositories</div>
+            <div class="desc">Public repositories of SairaDev02, played as a playlist: names, descriptions, languages and commit history.</div>
+            <div class="slot unf"><div class="card-host" data-host="unf"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- The four card designs; one is cloned into each host. -->
+    <template id="A">
+      <div class="card va">
+        <canvas class="sky" width="320" height="192"></canvas>
+        <div class="plate">
+          <span class="lab">public repositories</span>
+          <span class="mark">SairaDev02</span>
+          <span class="url">sairadev02.github.io</span>
+        </div>
+      </div>
+    </template>
+
+    <template id="B">
+      <div class="card vb">
+        <canvas class="cd" width="512" height="224"></canvas>
+        <div class="foot">
+          <span class="mark">SairaDev02<sup>™</sup></span>
+          <span class="lab">public repositories · played as a playlist</span>
+        </div>
+      </div>
+    </template>
+
+    <template id="C">
+      <div class="card vc">
+        <div class="left">
+          <span class="lab">Side A · public work</span>
+          <span class="mark">SairaDev02</span>
+          <span class="barcode">{bars.map((w, i) => <i style={`width:${w * 5}px;margin-right:${i % 3 === 2 ? 8 : 5}px`} />)}</span>
+          <span class="url">sairadev02.github.io</span>
+        </div>
+        <div class="disc"><span></span></div>
+      </div>
+    </template>
+
+    <template id="D">
+      <div class="card vd">
+        <div class="lcd">
+          <span class="ghost">88</span>
+          <span class="num">▶</span>
+          <div class="main">
+            <span class="t">SAIRADEV02</span>
+            <span class="i">PUBLIC REPOSITORIES · NOW PLAYING</span>
+          </div>
+        </div>
+        <span class="url">sairadev02.github.io</span>
+      </div>
+    </template>
+
+    <nav class="switcher" aria-label="Prototype variants">
+      <button data-step="-1" aria-label="Previous variant">←</button>
+      <span data-label></span>
+      <button data-step="1" aria-label="Next variant">→</button>
+    </nav>
+  </main>
+</BaseLayout>
+
+<script define:vars={{ variants }}>
+  window.__variants = variants;
+</script>
+
+<script>
+  import { Sky } from '../scripts/render/sky';
+  import { quantizeEmissive } from '../scripts/render/dither';
+  import { readColours } from '../scripts/render/canvas';
+  import { CdScene } from '../scripts/player/scene';
+  import { WIDE } from '../scripts/player/geometry';
+
+  const variants: { key: string; name: string }[] = (window as any).__variants;
+  const root = document.documentElement;
+  const pal = readColours(root, ['--shade-0', '--shade-1', '--shade-2', '--shade-3']);
+  const light = readColours(root, ['--sun', '--sun-core']);
+
+  async function paint(card: Element) {
+    const sky = card.querySelector<HTMLCanvasElement>('canvas.sky');
+    if (sky) {
+      const { width: W, height: H } = sky;
+      const AL = new Float32Array(W * H);
+      new Sky(W, H).paint(AL, new Uint8Array(W * H), 40);
+      // Sun: an emissive radial glow, dithered into the two light colours.
+      const Em = new Float32Array(W * H);
+      const sx = 264, sy = 52, r = 22;
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        const d = Math.hypot(x - sx, y - sy) / r;
+        if (d < 1) Em[y * W + x] = d < 0.35 ? 1 : 1 - (d - 0.35) / 0.65;
+      }
+      const img = new ImageData(W, H);
+      quantizeEmissive(AL, Em, new Uint32Array(img.data.buffer), pal, light, W);
+      sky.getContext('2d')!.putImageData(img, 0, 0);
+    }
+    const cd = card.querySelector<HTMLCanvasElement>('canvas.cd');
+    if (cd) {
+      // Fixed disc count: nightly data stays out of the image.
+      const scene = await CdScene.build(WIDE, 6, { scene: pal, light });
+      scene.frame(40, { cued: -1, hover: -1, loading: null }, true);
+      cd.getContext('2d')!.putImageData(scene.image, 0, 0);
+    }
+  }
+
+  const keyOf = () => new URLSearchParams(location.search).get('variant') ?? 'A';
+  function show() {
+    const k = variants.some((v) => v.key === keyOf()) ? keyOf() : 'A';
+    const v = variants.find((x) => x.key === k)!;
+    for (const host of document.querySelectorAll('[data-host]')) {
+      host.replaceChildren((document.getElementById(k) as HTMLTemplateElement).content.cloneNode(true));
+      paint(host.firstElementChild!);
+    }
+    document.querySelector('[data-label]')!.textContent = `${v.key} (${v.name})`;
+    document.querySelector('[data-name]')!.textContent = `${v.key} ${v.name}`;
+  }
+  function step(d: number) {
+    const i = variants.findIndex((v) => v.key === keyOf());
+    const next = variants[(Math.max(i, 0) + d + variants.length) % variants.length].key;
+    history.replaceState(null, '', `?variant=${next}`);
+    show();
+  }
+  document.querySelectorAll<HTMLButtonElement>('[data-step]').forEach((b) => b.addEventListener('click', () => step(Number(b.dataset.step))));
+  addEventListener('keydown', (e) => {
+    if ((e.target as Element).closest('input,textarea,[contenteditable]')) return;
+    if (e.key === 'ArrowLeft') step(-1);
+    if (e.key === 'ArrowRight') step(1);
+  });
+  show();
+</script>
+
+<style is:global>
+  .proto { padding: 24px; display: grid; gap: 12px; }
+  .proto h2 { margin: 16px 0 4px; font-weight: 400; }
+  .row { display: flex; gap: 32px; flex-wrap: wrap; align-items: start; }
+
+  /* Every card is authored at 1200x630 and scaled into its slot. */
+  .slot { position: relative; overflow: hidden; outline: 1px solid var(--line-strong); }
+  .slot.full { width: 1200px; height: 630px; }
+  .slot.small { width: 640px; height: 336px; }
+  .slot.unf { width: 400px; height: 210px; margin-top: 10px; border-radius: 6px; }
+  .slot.small .card-host { transform: scale(0.5333); transform-origin: 0 0; }
+  .slot.unf .card-host { transform: scale(0.3333); transform-origin: 0 0; }
+  .slot.full.guides::after {
+    content: ''; position: absolute; left: 0; right: 0; top: 15px; height: 600px;
+    border-top: 2px dashed #e0245e; border-bottom: 2px dashed #e0245e; pointer-events: none;
+  }
+
+  .card { position: relative; width: 1200px; height: 630px; overflow: hidden; background: var(--bg); color: var(--fg); }
+  .card canvas { image-rendering: pixelated; display: block; }
+  .card .lab { font: 400 22px/1.4 var(--ui); letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); }
+  .card .url { font: 400 24px/1.4 var(--body); color: var(--muted); }
+
+  /* A: full-bleed dithered sky, glass plate with the wordmark, one sun. */
+  .va .sky { position: absolute; left: -40px; top: -69px; width: 1280px; height: 768px; }
+  .va .plate {
+    position: absolute; left: 96px; top: 50%; translate: 0 -50%;
+    display: flex; flex-direction: column; gap: 8px; padding: 36px 48px;
+    background: var(--glass); border: 2px solid var(--line-strong);
+  }
+  .va .mark { font: 700 104px/1.05 var(--wide); letter-spacing: -0.02em; }
+  .va .sun { position: absolute; right: 150px; top: 120px; width: 72px; height: 72px; background: var(--sun); box-shadow: 0 0 0 16px var(--sun-core); image-rendering: pixelated; }
+
+  /* B: the real CD player picture, as on the home page, with a caption strip. */
+  .vb .cd { width: 1024px; height: 448px; margin: 40px auto 0; border: 2px solid var(--line-strong); }
+  .vb .foot { display: flex; justify-content: space-between; align-items: baseline; padding: 24px 88px 0; }
+  .vb .mark { font: 700 64px/1 var(--wide); letter-spacing: -0.02em; }
+  .vb .mark sup { font-size: 0.35em; color: var(--accent); }
+
+  /* C: a record-sleeve layout: type left, a flat disc bleeding off the right edge. */
+  .vc { display: grid; grid-template-columns: 1fr 520px; background: var(--shade-3); }
+  .vc .left { display: flex; flex-direction: column; justify-content: center; gap: 20px; padding-left: 96px; }
+  .vc .mark { font: 700 112px/1 var(--wide); letter-spacing: -0.03em; color: var(--shade-0); }
+  .vc .barcode { display: flex; height: 44px; }
+  .vc .barcode i { display: block; background: var(--fg); }
+  .vc .disc { position: relative; }
+  .vc .disc::before {
+    content: ''; position: absolute; left: 40px; top: 50%; translate: 0 -50%; width: 620px; height: 620px; border-radius: 50%;
+    background: repeating-radial-gradient(circle, var(--shade-1) 0 6px, var(--accent) 6px 12px);
+  }
+  .vc .disc span { position: absolute; left: 240px; top: 50%; translate: 0 -50%; width: 220px; height: 220px; border-radius: 50%; background: var(--sun); box-shadow: inset 0 0 0 86px var(--sun), inset 0 0 0 110px var(--fg); }
+
+  /* D: the LCD faceplate blown up: navy panel, yellow pixel type. */
+  .vd { background: var(--shade-0); display: grid; place-content: center; gap: 28px; }
+  .vd .lcd {
+    display: grid; grid-template-columns: auto auto 1fr; align-items: center; gap: 36px;
+    width: 1000px; padding: 48px 56px; background: var(--fg); border: 4px solid var(--shade-1);
+    font-family: var(--pixel); color: var(--sun);
+  }
+  .vd .ghost { position: absolute; opacity: 0; }
+  .vd .num { font-size: 120px; line-height: 1; }
+  .vd .main { display: flex; flex-direction: column; gap: 10px; grid-column: 3; }
+  .vd .t { font-size: 112px; line-height: 1; letter-spacing: 0.04em; }
+  .vd .i { font-size: 30px; color: var(--sun-core); letter-spacing: 0.08em; }
+  .vd .url { color: var(--shade-2); text-align: center; }
+
+  .unfurl { display: grid; grid-template-columns: 4px 1fr; gap: 12px; width: 440px; padding: 12px; background: #fff; border-radius: 6px; font: 400 14px/1.4 system-ui, sans-serif; }
+  .unfurl .bar { background: #dfe9fb; border-radius: 2px; }
+  .unfurl .site { font-weight: 600; color: #444; font-size: 12px; }
+  .unfurl .ttl { font-weight: 700; color: #1264a3; }
+  .unfurl .desc { color: #333; }
+
+  .switcher {
+    position: fixed; left: 50%; bottom: 20px; translate: -50% 0; z-index: 10;
+    display: flex; gap: 12px; align-items: center; padding: 8px 14px;
+    background: #111; color: #fff; border-radius: 999px; box-shadow: 0 6px 24px rgb(0 0 0 / 0.35);
+    font: 600 14px/1 system-ui, sans-serif;
+  }
+  .switcher button { all: unset; cursor: pointer; padding: 4px 8px; }
+</style>
