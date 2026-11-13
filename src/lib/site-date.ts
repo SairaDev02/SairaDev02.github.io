@@ -33,5 +33,6 @@ function git(args: string[]): string {
 /** The date this build reports: the sitemap `lastmod` and the ProfilePage `dateModified`. */
 export async function siteModifiedAtBuild(): Promise<string> {
   const [newest] = await getRepos();
+  if (!newest) throw new Error('Site-modified date: the site shows no repositories, so no push date.');
   return siteModifiedDate(newest.pushedAt, readSiteCommitDate());
 }

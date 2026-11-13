@@ -7,6 +7,7 @@ const meta: SiteMetadata = {
   title: 'SairaDev02 · public repositories',
   description: 'Public repositories of SairaDev02, played as a playlist: names, descriptions, languages and commit history.',
   url: 'https://sairadev02.github.io/',
+  avatar: 'https://avatars.githubusercontent.com/u/96645098',
   profiles: {
     github: 'https://github.com/SairaDev02',
     crates: 'https://crates.io/users/SairaDev02',

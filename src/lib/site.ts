@@ -18,6 +18,8 @@ export interface SiteMetadata {
   description: string;
   /** The absolute home page URL. */
   url: string;
+  /** The Person's avatar: the GitHub user's portrait, the JSON-LD `image`. */
+  avatar: string;
   /** The profile pages that carry the same identity, also the Person's sameAs list. */
   profiles: { github: string; crates: string };
 }
@@ -27,6 +29,8 @@ export const SITE: SiteMetadata = {
   title: `${GITHUB_USER} · public repositories`,
   description: `Public repositories of ${GITHUB_USER}, played as a playlist: names, descriptions, languages and commit history.`,
   url: homeUrl,
+  // GitHub serves the user's portrait at an id-based URL; there is no handle-based one.
+  avatar: 'https://avatars.githubusercontent.com/u/96645098',
   profiles: {
     github: `https://github.com/${GITHUB_USER}`,
     crates: `https://crates.io/users/${GITHUB_USER}`,

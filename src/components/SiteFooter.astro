@@ -5,7 +5,7 @@ import { READY_SECTIONS } from '../lib/sections';
 import { SITE } from '../lib/site';
 
 const contact = READY_SECTIONS.find((s) => s.id === 'contact');
-const shown = (url: string) => url.replace(/^https:\/\//, '');
+const withoutScheme = (url: string) => url.replace(/^https:\/\//, '');
 ---
 
 <footer class="wrap foot">
@@ -14,9 +14,9 @@ const shown = (url: string) => url.replace(/^https:\/\//, '');
       <div id={contact.id}>
         <p class="label">{contact.label}</p>
         <p>
-          <a href={SITE.profiles.github} rel="me">{shown(SITE.profiles.github)}</a>
+          <a href={SITE.profiles.github} rel="me">{withoutScheme(SITE.profiles.github)}</a>
           <br />
-          <a href={SITE.profiles.crates} rel="me">{shown(SITE.profiles.crates)}</a>
+          <a href={SITE.profiles.crates} rel="me">{withoutScheme(SITE.profiles.crates)}</a>
         </p>
       </div>
     )

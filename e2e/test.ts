@@ -6,15 +6,15 @@ export const test = base.extend<{ pageErrors: string[] }>({
   pageErrors: [
     async ({ page }, use) => {
       const errors: string[] = [];
-      // A navigation the test makes on purpose can answer with an error status: the 404
-      // page. Chromium logs that document as a failed resource, which is the response the
-      // test asked for, so it is not a console error. Assets the document then requests
-      // are still reported, because their URLs are not navigations.
+      // A navigation the test makes on purpose can answer 404: that is the response the
+      // unknown-path test asks for, so Chromium logging it as a failed resource is expected
+      // and not a console error. Any other error status (a 500) stays an error. Assets the
+      // document then requests are still reported, because their URLs are not navigations.
       const failedNavigations = new Set<string>();
       page.on('pageerror', (e) => errors.push(e.message));
       page.on('response', (response) => {
         const request = response.request();
-        if (request.isNavigationRequest() && request.frame() === page.mainFrame() && response.status() >= 400) {
+        if (request.isNavigationRequest() && request.frame() === page.mainFrame() && response.status() === 404) {
           failedNavigations.add(request.url());
         }
       });
