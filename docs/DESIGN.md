@@ -39,7 +39,7 @@ now-playing dock, lyrics and a queue.
 | IBM Plex Mono | Body text, dates, the LCD counter digits |
 | Pixelify Sans | Pixel accents: LCD title, lettering inside the picture |
 
-All four are OFL and load from Google Fonts. Lexend Exa replaces Novecento Sans Wide,
+All four are OFL and self-hosted through Fontsource packages. Lexend Exa replaces Novecento Sans Wide,
 whose free licence covers desktop installation only, not webfonts.
 
 ## Picture rendering

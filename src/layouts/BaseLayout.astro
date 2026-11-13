@@ -1,5 +1,16 @@
 ---
+// Fonts are self-hosted so first paint waits on no third-party stylesheet. Each import
+// adds @font-face rules for every subset; browsers fetch only the subsets a page uses.
+import '@fontsource-variable/lexend-exa';
+import '@fontsource-variable/lexend';
+import '@fontsource-variable/pixelify-sans';
+import '@fontsource/ibm-plex-mono/400.css';
+import '@fontsource/ibm-plex-mono/700.css';
 import '../styles/global.css';
+// Preloaded: Lexend Exa sets the largest text (the LCP element), and the CD player's
+// canvas waits for Pixelify Sans before it can draw its lettering.
+import lexendExa from '@fontsource-variable/lexend-exa/files/lexend-exa-latin-wght-normal.woff2?url';
+import pixelify from '@fontsource-variable/pixelify-sans/files/pixelify-sans-latin-wght-normal.woff2?url';
 
 interface Props {
   title: string;
@@ -15,12 +26,8 @@ const { title, description } = Astro.props;
     <title>{title}</title>
     <meta name="description" content={description} />
     <meta name="theme-color" content="#dfe9fb" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Lexend+Exa:wght@300;600&family=Lexend:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;700&family=Pixelify+Sans:wght@400;700&display=swap"
-    />
+    <link rel="preload" href={lexendExa} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={pixelify} as="font" type="font/woff2" crossorigin />
   </head>
   <body>
     <slot />

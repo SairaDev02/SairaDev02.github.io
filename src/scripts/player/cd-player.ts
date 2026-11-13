@@ -26,9 +26,9 @@ export async function mountCdPlayer(root: HTMLElement, tracks: readonly Track[],
   let press: { id: number; x: number; y: number } | null = null;
 
   const updateLcd = () => showLcd(lcdView(player.get(), scene?.drag ?? null, tracks));
-  const loop = frameLoop(canvas, (t) => {
+  const loop = frameLoop(canvas, (t, still) => {
     if (!scene) return;
-    if (scene.frame(t, player.get(), reducedMotion())) player.arrive();
+    if (scene.frame(t, player.get(), still)) player.arrive();
     ctx.putImageData(scene.image, 0, 0);
   });
   // Under reduced motion the loop draws only on demand.

@@ -21,10 +21,11 @@
   --line-strong: rgb(29 63 208 / 0.35);
   --glass: rgb(246 249 255 / 0.82);
 
-  --wide: 'Lexend Exa', var(--ui);
-  --ui: 'Lexend', var(--body);
+  /* Self-hosted through Fontsource (see BaseLayout); the variable fonts carry these names. */
+  --wide: 'Lexend Exa Variable', var(--ui);
+  --ui: 'Lexend Variable', var(--body);
   --body: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
-  --pixel: 'Pixelify Sans', ui-monospace, monospace;
+  --pixel: 'Pixelify Sans Variable', ui-monospace, monospace;
 
   --page-max: 1100px;
   --dock-h: 96px;

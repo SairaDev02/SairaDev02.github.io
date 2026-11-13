@@ -9,7 +9,7 @@ export interface MaskText {
   align?: CanvasTextAlign;
 }
 
-const FONT = '"Pixelify Sans"';
+const FONT = '"Pixelify Sans Variable"';
 
 export async function textMask(W: number, H: number, items: MaskText[]): Promise<Uint8Array> {
   await Promise.all(items.map((it) => document.fonts.load(`${it.weight ?? 700} ${it.size}px ${FONT}`)));

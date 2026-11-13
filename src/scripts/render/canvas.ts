@@ -1,5 +1,6 @@
 // DOM plumbing for dithered canvases: palettes from CSS, whole-pixel scaling, and a
-// frame loop capped at 30 fps that pauses off screen and in hidden tabs.
+// frame loop capped at 30 fps that waits for the first input, slows down when frames are
+// expensive, and pauses off screen and in hidden tabs.
 import { packRgb, type Palette } from './dither';
 
 export const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -35,29 +36,55 @@ export function fitWholePixels(canvas: HTMLCanvasElement, container: HTMLElement
   };
 }
 
+/** Input that shows a person is on the page; the first one starts the animation. */
+const WAKE_EVENTS = ['pointermove', 'pointerdown', 'keydown', 'wheel', 'scroll', 'touchstart'] as const;
+/** Frames are spaced at least this many times their own cost apart, so on a slow device
+ * rendering takes at most half the main thread and input still gets through. */
+const COST_SPACING = 2;
+
 /**
- * Calls `frame(seconds)` at most `fps` times a second while the canvas is on screen and
- * the tab is visible. Under reduced motion it draws single frames only: on entering the
- * screen and on `redraw()`. `stop()` detaches everything.
+ * Calls `frame(seconds, still)` while the canvas is on screen and the tab is visible: at
+ * most `fps` times a second, and less often when frames are expensive.
+ *
+ * Until the first pointer, key, wheel, scroll or touch input it draws single still frames
+ * only (on entering the screen and on `redraw()`), so loading the page costs one render
+ * rather than a continuous loop. Under reduced motion it stays that way. `still` is true
+ * for these single frames. `stop()` detaches everything.
  */
-export function frameLoop(canvas: HTMLCanvasElement, frame: (t: number) => void, fps = 30) {
+export function frameLoop(canvas: HTMLCanvasElement, frame: (t: number, still: boolean) => void, fps = 30) {
   let visible = false;
+  let awake = false;
   let raf = 0;
   let last = 0;
-  const draw = () => frame(performance.now() / 1000);
+  /** Smoothed cost of one frame, in ms. */
+  let cost = 0;
+  const run = (now: number) => {
+    const t0 = performance.now();
+    frame(now / 1000, !awake || reducedMotion());
+    const d = performance.now() - t0;
+    cost = cost ? 0.8 * cost + 0.2 * d : d;
+  };
+  const draw = () => run(performance.now());
   const tick = (now: number) => {
     raf = requestAnimationFrame(tick);
-    if (now - last < 1000 / fps - 2) return;
+    if (now - last < Math.max(1000 / fps, COST_SPACING * cost) - 2) return;
     last = now;
-    frame(now / 1000);
+    run(now);
   };
   const start = () => {
-    if (!raf && visible && !document.hidden && !reducedMotion()) raf = requestAnimationFrame(tick);
+    if (!raf && awake && visible && !document.hidden && !reducedMotion()) raf = requestAnimationFrame(tick);
   };
   const pause = () => {
     cancelAnimationFrame(raf);
     raf = 0;
   };
+  const unwatch = () => WAKE_EVENTS.forEach((e) => removeEventListener(e, wake, true));
+  const wake = () => {
+    awake = true;
+    unwatch();
+    start();
+  };
+  WAKE_EVENTS.forEach((e) => addEventListener(e, wake, { capture: true, passive: true }));
   const io = new IntersectionObserver(([e]) => {
     visible = e.isIntersecting;
     if (visible) {
@@ -72,6 +99,7 @@ export function frameLoop(canvas: HTMLCanvasElement, frame: (t: number) => void,
     redraw: draw,
     stop() {
       pause();
+      unwatch();
       io.disconnect();
       document.removeEventListener('visibilitychange', onVisibility);
     },
