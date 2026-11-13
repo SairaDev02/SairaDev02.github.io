@@ -1,0 +1,86 @@
+---
+// 404: an unknown path keeps the site's chrome and a way back to the playlist. No canonical
+// and no JSON-LD, so a crawler never indexes it; the sitemap leaves it out as well. It
+// renders no repository data, so the header has no last-push readout.
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import { SITE } from '../lib/site';
+
+const description =
+  'No track at this address: it may have moved, or the link may be mistyped. The playlist of public repositories is one link away.';
+---
+
+<BaseLayout title={`Not found · ${SITE.name}`} description={description}>
+  <div class="page">
+    <SiteHeader />
+    <main class="wrap main">
+      <div class="card">
+        <p class="label">404 · Off the playlist</p>
+        <h1>Track not found</h1>
+        <p class="copy">No track at this address. It may have moved, or the link may be mistyped.</p>
+        <a class="back" href="/">Back to the playlist</a>
+      </div>
+    </main>
+    <SiteFooter />
+  </div>
+</BaseLayout>
+
+<style>
+  /* Header, card and footer on one screen: the card sits in the middle wherever the
+     viewport leaves room for it. */
+  .page {
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    min-height: 100vh;
+  }
+  /* Each row is a .wrap. Auto margins on a grid item would shrink it to its content, so
+     pin its width: the header and the footer keep the home page's alignment. */
+  .page > :global(.wrap) { width: 100%; }
+  .main {
+    display: grid;
+    align-content: center;
+    justify-items: start;
+    padding-top: 16px;
+    padding-bottom: 48px;
+  }
+  .card {
+    max-width: 620px;
+    padding: 28px;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: var(--glass);
+  }
+  @media (min-width: 900px) {
+    .card { padding: 40px; }
+  }
+  .card p { margin: 0; }
+  h1 {
+    margin: 8px 0 12px;
+    font: 600 clamp(1.5rem, 5vw, 2.4rem) / 1.05 var(--wide);
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .copy {
+    max-width: 46ch;
+    color: var(--muted);
+  }
+  .card .copy { margin-bottom: 24px; }
+  .back {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 20px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: var(--on-accent);
+    font: 400 14px/1 var(--ui);
+    text-decoration: none;
+  }
+  .back:hover,
+  .back:focus-visible {
+    background: var(--sun);
+    color: var(--on-sun);
+  }
+</style>

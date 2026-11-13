@@ -4,8 +4,11 @@ import { GITHUB_USER } from '../lib/github';
 import { READY_SECTIONS } from '../lib/sections';
 
 interface Props {
-  /** Last push across all repositories, "2026.11.12". */
-  lastPush: string;
+  /**
+   * Last push across all repositories, "2026.11.12". Leave it out on a page with no
+   * repository data, such as the 404 page: the readout is then not rendered at all.
+   */
+  lastPush?: string;
 }
 const { lastPush } = Astro.props;
 // Barcode bar widths derived from the handle: decoration with a stable source.
@@ -15,21 +18,23 @@ const bars = [...GITHUB_USER].flatMap((ch) => {
 });
 ---
 
-<header class="wrap top">
+<header class:list={['wrap', 'top', { 'no-push': !lastPush }]}>
   <a class="brand" href="/">
     <span class="label">{GITHUB_USER} <sup>™</sup></span>
     <span class="barcode" aria-hidden="true">
       {bars.map((w, i) => <i style={`width:${w * 2}px;margin-right:${i % 3 === 2 ? 3 : 2}px`} />)}
     </span>
   </a>
-  <p class="push">
-    <span class="dots" aria-hidden="true"><b></b><b></b><b class="lit"></b></span>
-    <span class="label">▶ {lastPush}</span>
-    <span class="label label-dim">Last push</span>
-  </p>
+  {lastPush && (
+    <p class="push">
+      <span class="dots" aria-hidden="true"><b></b><b></b><b class="lit"></b></span>
+      <span class="label">▶ {lastPush}</span>
+      <span class="label label-dim">Last push</span>
+    </p>
+  )}
   <nav class="nav" aria-label="Main">
     {READY_SECTIONS.map((s) => (
-      <a href={s.href} aria-current={s.href === '/' ? 'page' : undefined}>{s.label}</a>
+      <a href={s.href} aria-current={s.href === Astro.url.pathname ? 'page' : undefined}>{s.label}</a>
     ))}
   </nav>
 </header>
@@ -45,6 +50,8 @@ const bars = [...GITHUB_USER].flatMap((ch) => {
   }
   @media (min-width: 900px) {
     .top { grid-template-columns: 1fr 1fr auto; }
+    /* Two children instead of three: the navigation still ends at the right edge. */
+    .top.no-push { grid-template-columns: 1fr auto; }
   }
   .brand {
     display: flex;
