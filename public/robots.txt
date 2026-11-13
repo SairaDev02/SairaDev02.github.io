@@ -1,0 +1,3 @@
+# Everything on this site is public; all crawlers are welcome.
+User-agent: *
+Allow: /
