@@ -1,6 +1,7 @@
 ---
 // Handle with a barcode, last-push readout and the main navigation.
 import { GITHUB_USER } from '../lib/github';
+import { READY_SECTIONS } from '../lib/sections';
 
 interface Props {
   /** Last push across all repositories, "2026.11.12". */
@@ -12,13 +13,6 @@ const bars = [...GITHUB_USER].flatMap((ch) => {
   const c = ch.charCodeAt(0);
   return [1 + (c % 3), 1 + ((c >> 2) % 2), 1 + ((c >> 3) % 3)];
 });
-const nav = [
-  { label: 'Projects', href: '/', current: true },
-  // Pages not built yet.
-  { label: 'Writing', href: '#writing' },
-  { label: 'Resume', href: '#resume' },
-  { label: 'Contact', href: '#contact' },
-];
 ---
 
 <header class="wrap top">
@@ -34,7 +28,9 @@ const nav = [
     <span class="label label-dim">Last push</span>
   </p>
   <nav class="nav" aria-label="Main">
-    {nav.map((n) => <a href={n.href} aria-current={n.current ? 'page' : undefined}>{n.label}</a>)}
+    {READY_SECTIONS.map((s) => (
+      <a href={s.href} aria-current={s.href === '/' ? 'page' : undefined}>{s.label}</a>
+    ))}
   </nav>
 </header>
 

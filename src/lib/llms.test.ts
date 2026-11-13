@@ -37,4 +37,12 @@ describe('llmsTxt', () => {
     const text = llmsTxt('u', site, [repo({ description: 'Line one.\nLine  two.' })]);
     expect(text).toContain('): Line one. Line two.\n');
   });
+
+  it('lists the crates.io profile under Optional, next to the GitHub profile', () => {
+    const text = llmsTxt('SairaDev02', site, []);
+    const optional = text.slice(text.indexOf('## Optional'));
+    expect(optional).toContain(
+      '- [GitHub profile](https://github.com/SairaDev02)\n- [crates.io profile](https://crates.io/users/SairaDev02)\n',
+    );
+  });
 });

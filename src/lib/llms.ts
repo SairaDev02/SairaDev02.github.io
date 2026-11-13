@@ -25,6 +25,7 @@ export function llmsTxt(user: string, site: string, repos: Repo[]): string {
     '## Optional',
     '',
     `- [GitHub profile](https://github.com/${user})`,
+    `- [crates.io profile](https://crates.io/users/${user})`,
     '',
   ].join('\n');
 }

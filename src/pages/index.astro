@@ -9,13 +9,17 @@ import SiteHeader from '../components/SiteHeader.astro';
 import TrackList from '../components/TrackList.astro';
 import { dotDate, toTrack } from '../lib/format';
 import { GITHUB_USER, getRepos } from '../lib/github';
+import { profileGraph } from '../lib/jsonld';
+import { SITE } from '../lib/site';
+import { siteModifiedAtBuild } from '../lib/site-date';
 
 const repos = await getRepos();
 if (!repos.length) throw new Error(`No public repositories found for ${GITHUB_USER}.`);
 const lastPush = dotDate(repos[0].pushedAt);
+const jsonLd = profileGraph(SITE, await siteModifiedAtBuild());
 ---
 
-<BaseLayout title={`${GITHUB_USER} · public work`} description={`Public repositories of ${GITHUB_USER}, played as a playlist.`}>
+<BaseLayout title={SITE.title} description={SITE.description} canonical={SITE.url} jsonLd={jsonLd}>
   <div class="page">
     <div class="sky" aria-hidden="true"></div>
     <SiteHeader lastPush={lastPush} />

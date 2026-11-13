@@ -12,7 +12,7 @@ test.beforeEach(async ({ page }) => {
 
 test.describe('page content', () => {
   test('lists public, non-fork, non-hidden repositories, newest push first', async ({ page }) => {
-    await expect(page).toHaveTitle('SairaDev02 · public work');
+    await expect(page).toHaveTitle('SairaDev02 · public repositories');
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(/SairaDev02\s*public work/);
     await expect(page.getByText('Public playlist · 4 repositories')).toBeVisible();
     await expect(page.getByText('9 commits · Rust / TypeScript · updated 2026.10.20')).toBeVisible();

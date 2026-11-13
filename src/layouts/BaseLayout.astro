@@ -1,4 +1,7 @@
 ---
+// Every page's title, description, canonical and structured data come from props, so a
+// new page supplies its own. Canonical and JSON-LD are optional: a page that must not be
+// indexed leaves them out.
 // Fonts are self-hosted so first paint waits on no third-party stylesheet. Each import
 // adds @font-face rules for every subset; browsers fetch only the subsets a page uses.
 import '@fontsource-variable/lexend-exa';
@@ -11,12 +14,17 @@ import '../styles/global.css';
 // canvas waits for Pixelify Sans before it can draw its lettering.
 import lexendExa from '@fontsource-variable/lexend-exa/files/lexend-exa-latin-wght-normal.woff2?url';
 import pixelify from '@fontsource-variable/pixelify-sans/files/pixelify-sans-latin-wght-normal.woff2?url';
+import { SITE } from '../lib/site';
 
 interface Props {
   title: string;
   description: string;
+  /** The absolute canonical URL; leave it out on pages that must not be indexed. */
+  canonical?: string;
+  /** The schema.org graph to embed; leave it out on pages without structured data. */
+  jsonLd?: unknown;
 }
-const { title, description } = Astro.props;
+const { title, description, canonical, jsonLd } = Astro.props;
 ---
 
 <html lang="en">
@@ -25,6 +33,15 @@ const { title, description } = Astro.props;
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>{title}</title>
     <meta name="description" content={description} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={SITE.name} />
+    <meta property="og:locale" content="en_US" />
+    {canonical && <link rel="canonical" href={canonical} />}
+    {canonical && <meta property="og:url" content={canonical} />}
+    <meta name="twitter:card" content="summary_large_image" />
+    {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
     <meta name="theme-color" content="#dfe9fb" />
     <link rel="preload" href={lexendExa} as="font" type="font/woff2" crossorigin />
     <link rel="preload" href={pixelify} as="font" type="font/woff2" crossorigin />
