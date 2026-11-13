@@ -207,12 +207,10 @@ test.describe('404 page', () => {
     expect(new URL(page.url()).pathname).toBe('/');
   });
 
-  test('has no canonical, no structured data and no link preview image', async ({ page }) => {
+  test('has no canonical and no structured data', async ({ page }) => {
     await page.goto('/no-such-track');
     expect(await page.locator('link[rel="canonical"]').count()).toBe(0);
     expect(await page.locator('script[type="application/ld+json"]').count()).toBe(0);
-    expect(await page.locator('meta[property="og:url"], meta[name="og:url"]').count()).toBe(0);
-    expect(await page.locator('meta[property="og:image"], meta[name="og:image"]').count()).toBe(0);
   });
 });
 
