@@ -1,6 +1,6 @@
-// DOM plumbing for dithered canvases: palettes from CSS, whole-pixel scaling, and a
-// frame loop capped at 30 fps that waits for the first input, slows down when frames are
-// expensive, and pauses off screen and in hidden tabs.
+// DOM plumbing for dithered canvases: palettes from CSS, the pixel ratio for whole-pixel
+// scaling, and a frame loop capped at 30 fps that waits for the first input, slows down
+// when frames are expensive, and pauses off screen and in hidden tabs.
 import { packRgb, type Palette } from './dither';
 
 export const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -12,28 +12,31 @@ export function readColours(el: Element, names: readonly string[]): Palette {
 }
 
 /**
- * Sizes the canvas to the largest whole multiple of its grid that fits the container in
- * device pixels, so every grid pixel covers the same number of screen pixels.
+ * Keeps `--dpr` on `container` equal to the device pixel ratio, which CSS needs to size a
+ * canvas to a whole multiple of its grid in device pixels (see CdPlayer.astro). Media
+ * queries there guess the ratio before this runs; this corrects ratios they do not list
+ * and follows changes (zoom, moving between screens).
  */
-export function fitWholePixels(canvas: HTMLCanvasElement, container: HTMLElement, maxScale = 6): () => void {
-  const fit = () => {
-    const cs = getComputedStyle(container);
-    // Content width minus the frame's 2px borders.
-    const avail = container.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 4;
-    if (avail <= 0) return;
+export function trackDevicePixelRatio(container: HTMLElement): () => void {
+  let mq: MediaQueryList | null = null;
+  const update = () => {
     const dpr = window.devicePixelRatio || 1;
-    const s = Math.max(1, Math.min(maxScale, Math.floor((avail * dpr) / canvas.width)));
-    canvas.style.width = `${(canvas.width * s) / dpr}px`;
+    container.style.setProperty('--dpr', String(dpr));
+    mq?.removeEventListener('change', update);
+    mq = matchMedia(`(resolution: ${dpr}dppx)`);
+    mq.addEventListener('change', update);
   };
-  const ro = new ResizeObserver(fit);
-  ro.observe(container);
-  // DPR changes (zoom, moving between screens) do not resize the container.
-  addEventListener('resize', fit);
-  fit();
-  return () => {
-    ro.disconnect();
-    removeEventListener('resize', fit);
-  };
+  update();
+  return () => mq?.removeEventListener('change', update);
+}
+
+/**
+ * Lets the browser handle pending input and paint before the caller continues, so a long
+ * stretch of setup runs as several short tasks. Uses scheduler.yield() where available.
+ */
+export function yieldToMain(): Promise<void> {
+  const scheduler = (globalThis as { scheduler?: { yield?: () => Promise<void> } }).scheduler;
+  return scheduler?.yield ? scheduler.yield() : new Promise((resolve) => setTimeout(resolve, 0));
 }
 
 /** Input that shows a person is on the page; the first one starts the animation. */

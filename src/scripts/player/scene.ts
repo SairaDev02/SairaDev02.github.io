@@ -10,6 +10,7 @@ import { quantizeEmissive, type Palette } from '../render/dither';
 import { HeightField, sparkle } from '../render/heightfield';
 import { PointerLight } from '../render/light';
 import { Sky } from '../render/sky';
+import { yieldToMain } from '../render/canvas';
 import { textMask } from '../render/text-mask';
 import { layoutDiscs, type Geometry } from './geometry';
 import { LOAD } from './timing';
@@ -101,6 +102,8 @@ export class CdScene {
       Promise.all(slots.map((_, i) => digits(label(i)))),
       Promise.all(slots.map((_, i) => textMask(MW, MW, [{ text: label(i), x: r, y: r - (r + 9) / 2, size: r > 24 ? 13 : 10, weight: 700 }]))),
     ]);
+    // The masks and the scene's own setup are each sizeable: run them as separate tasks.
+    await yieldToMain();
     return new CdScene(g, colours, { idle, numbers }, brand, { r, slots, masks });
   }
 

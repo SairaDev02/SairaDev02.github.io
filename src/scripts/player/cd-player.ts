@@ -2,7 +2,7 @@
 // drop), the render loop, the LCD, and the switch between the wide and portrait grids.
 import type { Track } from '../../lib/format';
 import type { PlayerState } from '../player-state';
-import { fitWholePixels, frameLoop, readColours, reducedMotion } from '../render/canvas';
+import { frameLoop, readColours, reducedMotion, trackDevicePixelRatio, yieldToMain } from '../render/canvas';
 import { NARROW, NARROW_QUERY, WIDE } from './geometry';
 import { lcdView, mountLcd } from './lcd';
 import { CdScene } from './scene';
@@ -11,7 +11,7 @@ import { CdScene } from './scene';
 const DRAG_PX = 4;
 
 export async function mountCdPlayer(root: HTMLElement, tracks: readonly Track[], player: PlayerState) {
-  // `root` is the stage: its content width decides the canvas scale.
+  // `root` is the stage: its content width decides the canvas scale (in CSS).
   const canvas = root.querySelector<HTMLCanvasElement>('canvas')!;
   const showLcd = mountLcd(root.querySelector<HTMLElement>('[data-lcd]')!);
   const ctx = canvas.getContext('2d')!;
@@ -22,7 +22,6 @@ export async function mountCdPlayer(root: HTMLElement, tracks: readonly Track[],
 
   const narrow = matchMedia(NARROW_QUERY);
   let scene: CdScene | null = null;
-  let stopFit = () => {};
   let press: { id: number; x: number; y: number } | null = null;
 
   const updateLcd = () => showLcd(lcdView(player.get(), scene?.drag ?? null, tracks));
@@ -38,15 +37,17 @@ export async function mountCdPlayer(root: HTMLElement, tracks: readonly Track[],
   const build = async () => {
     const g = narrow.matches ? NARROW : WIDE;
     const next = await CdScene.build(g, tracks.length, colours);
+    // Building and the first frame are each long on slow devices: run them as two tasks.
+    await yieldToMain();
     if (g !== (narrow.matches ? NARROW : WIDE)) return; // switched again meanwhile
-    stopFit();
     canvas.width = g.W;
     canvas.height = g.H;
     scene = next;
     press = null;
-    stopFit = fitWholePixels(canvas, root);
     loop.redraw();
   };
+  // CSS sizes the canvas (CdPlayer.astro); it only needs the exact pixel ratio.
+  trackDevicePixelRatio(root);
   narrow.addEventListener('change', build);
   await build();
 
