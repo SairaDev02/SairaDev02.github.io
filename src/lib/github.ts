@@ -76,6 +76,29 @@ export function githubClient({
   };
 }
 
+/**
+ * Recorded API responses in place of the network, for builds that need fixed data (the
+ * e2e tests). `json` and `text` map API paths to bodies, as the two client methods return
+ * them; the responses still go through the same parsing as live ones. An unrecorded JSON
+ * path throws, so a fixture that falls behind the loader fails the build.
+ */
+export function fixtureClient(fixture: unknown): GitHubClient {
+  const valid =
+    isObj(fixture) && isObj(fixture.json) && isObj(fixture.text) && Object.values(fixture.text).every((v) => typeof v === 'string');
+  if (!valid) throw new Error('GitHub fixture: not a valid fixture; expected { json: { [path]: body }, text: { [path]: string } }');
+  const json = fixture.json as Obj;
+  const text = fixture.text as Record<string, string>;
+  return {
+    async json(path) {
+      if (!Object.hasOwn(json, path)) throw new Error(`GitHub fixture: path not in the fixture: ${path}`);
+      return json[path];
+    },
+    async text(path) {
+      return Object.hasOwn(text, path) ? text[path] : '';
+    },
+  };
+}
+
 // ---------- parsing the untrusted API responses ----------
 
 type Obj = Record<string, unknown>;
@@ -169,11 +192,25 @@ export async function loadRepos(user: string, client: GitHubClient, { hidden = [
 
 let cache: Promise<Repo[]> | undefined;
 
-/** Loaded once per build / dev-server process. */
+/**
+ * Loaded once per build / dev-server process. With REPOS_FIXTURE set to a JSON file (see
+ * fixtureClient), the build reads recorded responses instead of calling the API.
+ */
 export function getRepos(): Promise<Repo[]> {
-  // Astro exposes non-public variables from the build environment to server code.
-  const token: string | undefined = import.meta.env.GITHUB_TOKEN;
-  if (!token) console.warn('[github] GITHUB_TOKEN is not set: using the anonymous limit of 60 requests an hour.');
-  cache ??= loadRepos(GITHUB_USER, githubClient({ token }), { hidden: HIDDEN_REPOS });
+  cache ??= (async () => {
+    // Astro exposes non-public variables from the build environment to server code.
+    const fixture: string | undefined = import.meta.env.REPOS_FIXTURE;
+    const token: string | undefined = import.meta.env.GITHUB_TOKEN;
+    let client: GitHubClient;
+    if (fixture) {
+      const { readFile } = await import('node:fs/promises');
+      console.warn(`[github] REPOS_FIXTURE is set: building from ${fixture}, not the GitHub API.`);
+      client = fixtureClient(JSON.parse(await readFile(fixture, 'utf8')));
+    } else {
+      if (!token) console.warn('[github] GITHUB_TOKEN is not set: using the anonymous limit of 60 requests an hour.');
+      client = githubClient({ token });
+    }
+    return loadRepos(GITHUB_USER, client, { hidden: HIDDEN_REPOS });
+  })();
   return cache;
 }

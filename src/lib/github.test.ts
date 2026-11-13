@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { githubClient, loadRepos, type GitHubClient } from './github';
+import { fixtureClient, githubClient, loadRepos, type GitHubClient } from './github';
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 
@@ -107,5 +107,28 @@ describe('loadRepos', () => {
   it('rejects an unexpected API shape at the boundary', async () => {
     const client = fakeClient({ '/users/u/repos?per_page=100&type=owner&sort=pushed': [{ name: 42 }] });
     await expect(loadRepos('u', client)).rejects.toThrow(/name/);
+  });
+});
+
+describe('fixtureClient', () => {
+  const fixture = {
+    json: { '/users/u/repos': [{ id: 1 }] },
+    text: { '/repos/u/a/readme': '# A' },
+  };
+
+  it('answers recorded API paths, and an unrecorded README as missing', async () => {
+    const client = fixtureClient(fixture);
+    await expect(client.json('/users/u/repos')).resolves.toEqual([{ id: 1 }]);
+    await expect(client.text('/repos/u/a/readme')).resolves.toBe('# A');
+    await expect(client.text('/repos/u/b/readme')).resolves.toBe('');
+  });
+
+  it('fails on an unrecorded JSON path, so a stale fixture breaks the build', async () => {
+    await expect(fixtureClient(fixture).json('/users/u/other')).rejects.toThrow(/not in the fixture: \/users\/u\/other/);
+  });
+
+  it('rejects a file that is not a fixture', () => {
+    expect(() => fixtureClient({ json: [] })).toThrow(/not a valid fixture/);
+    expect(() => fixtureClient({ json: {}, text: { a: 1 } })).toThrow(/not a valid fixture/);
   });
 });
