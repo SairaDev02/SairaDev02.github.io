@@ -2,8 +2,6 @@
 // linked by @id so a parser can join them into one entity. Pure, so the shape is unit-tested.
 import type { SiteMetadata } from './site';
 
-const PERSON_IMAGE = 'https://avatars.githubusercontent.com/u/96645098';
-
 export function profileGraph(meta: SiteMetadata, dateModified: string) {
   const website = `${meta.url}#website`;
   const page = `${meta.url}#profilepage`;
@@ -33,7 +31,7 @@ export function profileGraph(meta: SiteMetadata, dateModified: string) {
         '@id': person,
         url: meta.url,
         name: meta.name,
-        image: PERSON_IMAGE,
+        image: meta.avatar,
         sameAs: [meta.profiles.github, meta.profiles.crates],
       },
     ],

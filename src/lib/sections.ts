@@ -1,6 +1,7 @@
 // The site's sections. The `ready` flag says whether a section has content to show: the
-// header navigation and the footer render only the ready ones, so an unfinished section
-// never appears as a placeholder. Turning one on is one change, made with its content.
+// header navigation renders only the ready ones, and the footer shows the Contact column
+// when Contact is ready, so an unfinished section never appears as a placeholder. Turning
+// one on is one change, made with its content.
 
 export interface Section {
   id: 'projects' | 'contact' | 'writing' | 'resume';

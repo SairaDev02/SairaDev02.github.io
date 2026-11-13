@@ -1,5 +1,0 @@
-# Everything on this site is public; all crawlers are welcome.
-User-agent: *
-Allow: /
-
-Sitemap: https://sairadev02.github.io/sitemap.xml
