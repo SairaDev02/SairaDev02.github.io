@@ -24,6 +24,16 @@ const pngSize = (body: Buffer) => {
   return { width: body.readUInt32BE(16), height: body.readUInt32BE(20) };
 };
 
+/**
+ * An ICO's image sizes, read from its ICONDIR: the header's 16-bit image count, then one
+ * 16-byte entry per image whose first two bytes are the width and height (0 meaning 256).
+ */
+const icoSizes = (body: Buffer) => {
+  expect(body.subarray(0, 4)).toEqual(Buffer.from([0x00, 0x00, 0x01, 0x00]));
+  const count = body.readUInt16LE(4);
+  return Array.from({ length: count }, (_, i) => ({ width: body[6 + i * 16] || 256, height: body[7 + i * 16] || 256 }));
+};
+
 interface Graph {
   '@context': unknown;
   '@graph': Record<string, unknown>[];
@@ -125,6 +135,8 @@ test.describe('indexing', () => {
     expect(xml.match(/<url>/g) ?? []).toHaveLength(1);
     expect(xml).not.toContain('changefreq');
     expect(xml).not.toContain('priority');
+    // The 404 page must not be listed.
+    expect(xml).not.toMatch(/<loc>[^<]*404/);
 
     await page.goto('/');
     const profile = (await jsonLd(page))['@graph'].find((n) => n['@type'] === 'ProfilePage');
@@ -151,6 +163,56 @@ test.describe('indexing', () => {
     const bingBody = await bing.text();
     expect(bingBody).toBe('<?xml version="1.0"?>\n<users>\n\t<user>1ED2B9966CE928D9D3F4E16D6ABC80C9</user>\n</users>');
     expect(Buffer.byteLength(bingBody)).toBe(85);
+  });
+});
+
+test.describe('icons', () => {
+  test('links the SVG favicon, the ICO fallback and a 180 px apple-touch-icon', async ({ page, request }) => {
+    await page.goto('/');
+    await expect(page.locator('link[rel="icon"][type="image/svg+xml"]')).toHaveAttribute('href', '/favicon.svg');
+    await expect(page.locator('link[rel="icon"][sizes="32x32"]')).toHaveAttribute('href', '/favicon.ico');
+    await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('href', '/apple-touch-icon.png');
+
+    const svgRes = await request.get('/favicon.svg');
+    expect(svgRes.ok()).toBe(true);
+    expect(svgRes.headers()['content-type']).toContain('image/svg+xml');
+    // The icon's five fills are the spec's picture tokens.
+    const fills = [...(await svgRes.text()).matchAll(/fill="(#[0-9a-f]{6})"/gi)].map((m) => m[1].toLowerCase()).sort();
+    expect(fills).toEqual(['#13238a', '#2f55e4', '#a9c3f6', '#f6f9ff', '#ffd60a']);
+
+    const icoRes = await request.get('/favicon.ico');
+    expect(icoRes.ok()).toBe(true);
+    expect(icoSizes(await icoRes.body())).toContainEqual({ width: 32, height: 32 });
+
+    const appleRes = await request.get('/apple-touch-icon.png');
+    expect(appleRes.ok()).toBe(true);
+    expect(appleRes.headers()['content-type']).toBe('image/png');
+    expect(pngSize(await appleRes.body())).toEqual({ width: 180, height: 180 });
+  });
+});
+
+test.describe('404 page', () => {
+  test('an unknown path returns 404 in site chrome with a way back to the playlist', async ({ page }) => {
+    const res = await page.goto('/no-such-track');
+    expect(res?.status()).toBe(404);
+    await expect(page).toHaveTitle('Not found · SairaDev02');
+    await expect(page.getByRole('heading', { level: 1, name: 'Track not found' })).toBeVisible();
+    await expect(page.getByRole('banner')).toBeVisible();
+    await expect(page.getByRole('contentinfo')).toBeVisible();
+
+    const back = page.getByRole('link', { name: 'Back to the playlist' });
+    await expect(back).toHaveAttribute('href', '/');
+    await back.click();
+    await expect(page).toHaveTitle(TITLE);
+    expect(new URL(page.url()).pathname).toBe('/');
+  });
+
+  test('has no canonical, no structured data and no link preview image', async ({ page }) => {
+    await page.goto('/no-such-track');
+    expect(await page.locator('link[rel="canonical"]').count()).toBe(0);
+    expect(await page.locator('script[type="application/ld+json"]').count()).toBe(0);
+    expect(await page.locator('meta[property="og:url"], meta[name="og:url"]').count()).toBe(0);
+    expect(await page.locator('meta[property="og:image"], meta[name="og:image"]').count()).toBe(0);
   });
 });
 

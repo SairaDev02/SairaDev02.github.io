@@ -10,7 +10,8 @@
     "test": "vitest run --dir src",
     "check": "astro check",
     "e2e": "playwright test",
-    "og:export": "node scripts/export-og.mjs"
+    "og:export": "node scripts/export-og.mjs",
+    "icons:export": "node scripts/export-icons.mjs"
   },
   "dependencies": {
     "@fontsource-variable/lexend": "^5.3.0",

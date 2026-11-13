@@ -2,6 +2,8 @@
 // Every page's title, description, canonical and structured data come from props, so a
 // new page supplies its own. Canonical and JSON-LD are optional: a page that must not be
 // indexed leaves them out.
+// The icons are the same on every page: public/favicon.svg (rendered by scripts/
+// export-icons.mjs into the apple-touch-icon and the /favicon.ico fallback).
 // Fonts are self-hosted so first paint waits on no third-party stylesheet. Each import
 // adds @font-face rules for every subset; browsers fetch only the subsets a page uses.
 import '@fontsource-variable/lexend-exa';
@@ -58,6 +60,9 @@ const imageUrl = image && new URL(image.src, SITE.url).href;
     <meta name="twitter:card" content="summary_large_image" />
     {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
     <meta name="theme-color" content="#dfe9fb" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="preload" href={lexendExa} as="font" type="font/woff2" crossorigin />
     <link rel="preload" href={pixelify} as="font" type="font/woff2" crossorigin />
   </head>
