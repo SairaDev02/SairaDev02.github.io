@@ -205,7 +205,8 @@ export class CdScene {
   // ---------- frame ----------
 
   /**
-   * Renders one frame into `image`. `still` (reduced motion) skips easing and the fade-in.
+   * Renders one frame into `image`. `still` (reduced motion, or the still frames shown
+   * before the first input) skips easing and the fade-in.
    * Returns true once a running load reaches the moment to navigate.
    */
   frame(t: number, s: PlayerSnapshot, still: boolean): boolean {
