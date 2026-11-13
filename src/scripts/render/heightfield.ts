@@ -1,6 +1,9 @@
 // Lit height-field scenes for the dithered picture. Fill H (height), AL (albedo), AO
 // (ambient occlusion) and SP (specular) per pixel, call finalize() for normals, then
 // light() writes luminance into L. Shadows are hard, marched through a few height slices.
+//
+// The per-pixel loops run every animation frame, so they avoid Math.hypot and Math.pow,
+// which are several times slower in V8 than the plain arithmetic used instead.
 
 /** Two-pass chamfer distance from each pixel to the nearest pixel on the other side of `mask`. */
 export function chamfer(mask: Uint8Array, W: number, H: number, inside: boolean): Float32Array {
@@ -98,7 +101,7 @@ export class HeightField {
         const i = y * W + x;
         const gx = (H[y * W + Math.min(W - 1, x + 1)] - H[y * W + Math.max(0, x - 1)]) / 2;
         const gy = (H[Math.min(Hh - 1, y + 1) * W + x] - H[Math.max(0, y - 1) * W + x]) / 2;
-        const len = Math.hypot(gx, gy, 1);
+        const len = Math.sqrt(gx * gx + gy * gy + 1);
         this.nx[i] = -gx / len;
         this.ny[i] = -gy / len;
         this.nz[i] = 1 / len;
@@ -106,15 +109,18 @@ export class HeightField {
       }
   }
 
-  /** Point light at (LX, LY, LZ) in grid units; writes luminance to L. */
-  light(LX: number, LY: number, LZ: number, o: LightOptions = {}) {
+  /**
+   * Point light at (LX, LY, LZ) in grid units; writes luminance to L for rows y0 to y1
+   * (exclusive), so a caller can light the field in bands. Needs finalize() first.
+   */
+  light(LX: number, LY: number, LZ: number, o: LightOptions = {}, y0 = 0, y1 = this.Hh) {
     const K = o.K ?? 2.7;
     const R2 = o.R2 ?? 52900;
     const S = o.slices ?? 4;
     const ag = o.ambGround ?? 0.1;
     const ar = o.ambRaised ?? 0.22;
     const { W, Hh, H, AL, AO, SP, nx, ny, nz, L, hmax } = this;
-    for (let y = 0; y < Hh; y++)
+    for (let y = y0; y < y1; y++)
       for (let x = 0; x < W; x++) {
         const i = y * W + x;
         const hp = H[i];
@@ -149,9 +155,11 @@ export class HeightField {
           const hx = dx * inv;
           const hy = dy * inv;
           const hz = dz * inv + 1;
-          const hl = Math.hypot(hx, hy, hz);
+          const hl = Math.sqrt(hx * hx + hy * hy + hz * hz);
           const nh = Math.max(0, (nx[i] * hx + ny[i] * hy + nz[i] * hz) / hl);
-          l += SP[i] * Math.pow(nh, 28) * fall * 2.2;
+          const n4 = nh * nh * (nh * nh);
+          const n8 = n4 * n4;
+          l += SP[i] * (n8 * n8 * n8 * n4) * fall * 2.2; // nh^28
         }
         L[i] = l;
       }
@@ -172,7 +180,7 @@ export function sparkle(Em: Float32Array, W: number, H: number, sx: number, sy: 
     for (let x = x0; x <= x1; x++) {
       const dx = Math.abs(x - sx);
       const dy = Math.abs(y - sy);
-      const r = Math.hypot(dx, dy);
+      const r = Math.sqrt(dx * dx + dy * dy);
       const arms = Math.exp(-dy / 0.7 - dx / (11 * size)) + Math.exp(-dx / 0.7 - dy / (11 * size));
       Em[y * W + x] += 1.4 * Math.exp(-r / (2.2 * size)) + 0.9 * arms + 0.35 * Math.exp(-r / (9 * size));
     }

@@ -79,5 +79,8 @@ const lastPush = dotDate(repos[0].pushedAt);
   @media (prefers-reduced-motion: reduce) {
     .sky::before { animation: none; }
   }
-  .playlist { padding-top: 40px; padding-bottom: 40px; }
+  /* The playlist is most of the page's first layout and starts below the picture on
+     phones: skip laying it out until it nears the screen. The size is a placeholder
+     until then; `auto` keeps the real one once known. */
+  .playlist { padding-top: 40px; padding-bottom: 40px; content-visibility: auto; contain-intrinsic-size: auto 1200px; }
 </style>
