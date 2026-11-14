@@ -1,0 +1,147 @@
+w1280 geometry {"n":4,"canvas":{"x":128,"y":86,"width":1024,"height":448},"narrow":false,"r":32,"rscreen":64}
+w1280 idle {"num":"--","title":"Drag a disc","flag":"drag","dock":"01 unmei-vn","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w1280 horizontalOverflow 0
+w1280 hover disc 2 {"num":"03","title":"sillytavern-vault","flag":"cue","dock":"03 sillytavern-vault","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w1280 after pointer leaves disc {"num":"--","title":"Drag a disc","flag":"drag","dock":"03 sillytavern-vault","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w1280 hover row 3 {"num":"04","title":"hermes-skills-saira","flag":"cue","dock":"04 hermes-skills-saira","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/","on":1}
+w1280 focus row 3 {"num":"04","title":"hermes-skills-saira","flag":"cue","dock":"04 hermes-skills-saira","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w1280 blur row {"num":"--","title":"Drag a disc","flag":"drag","dock":"04 hermes-skills-saira","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w1280 dragging in sky {"num":"02","title":"pi-tools-saira","flag":"cue","dock":"02 pi-tools-saira","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w1280 dropped in sky {"num":"02","title":"pi-tools-saira","flag":"cue","dock":"02 pi-tools-saira","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w1280 dropped on body {"num":"02","title":"pi-tools-saira","flag":"cue","dock":"02 pi-tools-saira","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w1280 over tray (held) {"num":"04","title":"Release to load","flag":"load","dock":"04 hermes-skills-saira","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w1280 over tray then pointer outside canvas (still pressed) {"num":"04","title":"hermes-skills-saira","flag":"cue","dock":"04 hermes-skills-saira","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w1280 released outside canvas {"num":"--","title":"Drag a disc","flag":"drag","dock":"04 hermes-skills-saira","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w1280 after wait (did it navigate?) {"num":"--","title":"Drag a disc","flag":"drag","dock":"04 hermes-skills-saira","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w1280 click on body (no disc) {"num":"--","title":"Drag a disc","flag":"drag","dock":"04 hermes-skills-saira","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w1280 next {"before":"04 hermes-skills-saira","after":"01 unmei-vn","lcd":"unmei-vn"}
+w1280 prev x2 "03 sillytavern-vault"
+w1280 shuffle aria ["true"]
+w1280 LCD after dock cue {"num":"03","title":"sillytavern-vault","flag":"cue","dock":"03 sillytavern-vault","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w1280 lyrics box {"panelTop":231,"panelH":480,"barH":89,"vh":800}
+w1280 lyrics lines {"n":16,"now":"A local-first character card gallery that runs entirely in"}
+w1280 canvas colours with lyrics open {"distinct":6,"w":512,"h":224}
+w1280 canvas vs panel {"canvasTop":86,"canvasBottom":534,"panelTop":231,"vh":800}
+w1280 Escape closes lyrics; focus {"hidden":true,"active":"BUTTON:Lyrics"}
+w1280 canvas colours after close {"distinct":6,"w":512,"h":224}
+w1280 queue items ["sillytavern-vault","hermes-skills-saira","unmei-vn","pi-tools-saira"]
+w1280 lyrics replaces queue? [lyricsHidden, queueHidden] [false,true]
+w1280 queue pick cues {"picked":"unmei-vn","num":"01","title":"unmei-vn","flag":"cue","dock":"01 unmei-vn","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w1280 move up focus kept null
+w1280 target sizes [["[data-np=\"play\"]",56,56],["[data-np=\"next\"]",32,32],["[data-np=\"prev\"]",32,32],["[data-np=\"shuffle\"]",32,32],["[data-np-panel=\"lyrics\"]",32,32],["[data-np-panel=\"queue\"]",32,32],["[data-move]",26,26],["[data-q-handle]",22,26],["[data-q-pick]",316,34]]
+w1280 tab order (40) ["BUTTON:Shuffle the queue","BUTTON:Previous in queue","BUTTON:Play: open the cued repository","BUTTON:Next in queue","BUTTON:Lyrics","BUTTON:Queue","BODY:Skip to repositori","A:#repositories","A:/","A:/","A:#contact","BUTTON:Play the cued repository: opens it","BUTTON:shuffle-play","A:https://github.com/SairaDev02/unmei-vn","A:https://github.com/SairaDev02/pi-tools-saira","A:https://github.com/SairaDev02/sillytavern-vault","A:https://github.com/SairaDev02/hermes-skills-saira","A:https://github.com/SairaDev02","A:https://crates.io/users/SairaDev02","BUTTON:Shuffle the queue","BUTTON:Previous in queue","BUTTON:Play: open the cued repository","BUTTON:Next in queue","BUTTON:Lyrics","BUTTON:Queue","BODY:Skip to repositori","A:#repositories","A:/","A:/","A:#contact","BUTTON:Play the cued repository: opens it","BUTTON:shuffle-play","A:https://github.com/SairaDev02/unmei-vn","A:https://github.com/SairaDev02/pi-tools-saira","A:https://github.com/SairaDev02/sillytavern-vault","A:https://github.com/SairaDev02/hermes-skills-saira","A:https://github.com/SairaDev02","A:https://crates.io/users/SairaDev02","BUTTON:Shuffle the queue","BUTTON:Previous in queue"]
+w1280 canvas tabIndex -1
+w1280 focused element vs dock {"top":726,"bottom":758,"barTop":711}
+w1280 row focus cue {"num":"03","title":"sillytavern-vault","flag":"cue","dock":"03 sillytavern-vault","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w1280 load a {"num":"03","title":"Loading sillytavern-vault","flag":"play","dock":"03 sillytavern-vault","kicker":"Now playing","playing":true,"url":"https://sairadev02.github.io/"}
+w1280 load b {"num":"03","title":"Loading sillytavern-vault","flag":"play","dock":"03 sillytavern-vault","kicker":"Now playing","playing":true,"url":"https://sairadev02.github.io/"}
+w1280 load c {"num":"03","title":"Loading sillytavern-vault","flag":"play","dock":"03 sillytavern-vault","kicker":"Now playing","playing":true,"url":"https://sairadev02.github.io/"}
+w1280 next clicked during load (ignored?) "clicked"
+w1280 LCD after next-during-load {"num":"03","title":"Loading sillytavern-vault","flag":"play","dock":"03 sillytavern-vault","kicker":"Now playing","playing":true,"url":"https://sairadev02.github.io/"}
+w1280 after load {"url":"https://github.com/SairaDev02/sillytavern-vault"}
+w1280 after back {"num":"--","title":"Drag a disc","flag":"drag","dock":"01 unmei-vn","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w1280 canvas after back {"distinct":6,"w":512,"h":224}
+w1280 console errors []
+w800 geometry {"n":4,"canvas":{"x":144,"y":86,"width":512,"height":224},"narrow":false,"r":32,"rscreen":32}
+w800 idle {"num":"--","title":"Drag a disc","flag":"drag","dock":"01 unmei-vn","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w800 horizontalOverflow 0
+w800 hover disc 2 {"num":"03","title":"sillytavern-vault","flag":"cue","dock":"03 sillytavern-vault","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w800 after pointer leaves disc {"num":"--","title":"Drag a disc","flag":"drag","dock":"03 sillytavern-vault","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w800 hover row 3 {"num":"04","title":"hermes-skills-saira","flag":"cue","dock":"04 hermes-skills-saira","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/","on":1}
+w800 focus row 3 {"num":"04","title":"hermes-skills-saira","flag":"cue","dock":"04 hermes-skills-saira","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w800 blur row {"num":"--","title":"Drag a disc","flag":"drag","dock":"04 hermes-skills-saira","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w800 dragging in sky {"num":"02","title":"pi-tools-saira","flag":"cue","dock":"02 pi-tools-saira","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w800 dropped in sky {"num":"02","title":"pi-tools-saira","flag":"cue","dock":"02 pi-tools-saira","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w800 dropped on body {"num":"02","title":"pi-tools-saira","flag":"cue","dock":"02 pi-tools-saira","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w800 over tray (held) {"num":"04","title":"Release to load","flag":"load","dock":"04 hermes-skills-saira","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w800 over tray then pointer outside canvas (still pressed) {"num":"04","title":"hermes-skills-saira","flag":"cue","dock":"04 hermes-skills-saira","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w800 released outside canvas {"num":"--","title":"Drag a disc","flag":"drag","dock":"04 hermes-skills-saira","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w800 after wait (did it navigate?) {"num":"--","title":"Drag a disc","flag":"drag","dock":"04 hermes-skills-saira","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w800 click on body (no disc) {"num":"--","title":"Drag a disc","flag":"drag","dock":"04 hermes-skills-saira","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w800 next {"before":"04 hermes-skills-saira","after":"01 unmei-vn","lcd":"unmei-vn"}
+w800 prev x2 "03 sillytavern-vault"
+w800 shuffle aria ["true"]
+w800 LCD after dock cue {"num":"03","title":"sillytavern-vault","flag":"cue","dock":"03 sillytavern-vault","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w800 lyrics box {"panelTop":307.3125,"panelH":520,"barH":72.6875,"vh":900}
+w800 lyrics lines {"n":16,"now":"A local-first character card gallery that runs entirely in"}
+w800 canvas colours with lyrics open {"distinct":6,"w":512,"h":224}
+w800 canvas vs panel {"canvasTop":1,"canvasBottom":225,"panelTop":307.3125,"vh":900}
+w800 Escape closes lyrics; focus {"hidden":true,"active":"BUTTON:Lyrics"}
+w800 canvas colours after close {"distinct":6,"w":512,"h":224}
+w800 queue items ["sillytavern-vault","hermes-skills-saira","unmei-vn","pi-tools-saira"]
+w800 lyrics replaces queue? [lyricsHidden, queueHidden] [false,true]
+w800 queue pick cues {"picked":"unmei-vn","num":"01","title":"unmei-vn","flag":"cue","dock":"01 unmei-vn","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w800 move up focus kept null
+w800 target sizes [["[data-np=\"play\"]",56,56],["[data-np=\"next\"]",32,32],["[data-np=\"prev\"]",32,32],["[data-np=\"shuffle\"]",32,32],["[data-np-panel=\"lyrics\"]",32,32],["[data-np-panel=\"queue\"]",32,32],["[data-move]",26,26],["[data-q-handle]",22,26],["[data-q-pick]",316,34]]
+w800 tab order (40) ["BUTTON:Shuffle the queue","BUTTON:Previous in queue","BUTTON:Play: open the cued repository","BUTTON:Next in queue","BUTTON:Lyrics","BUTTON:Queue","BODY:Skip to repositori","A:#repositories","A:/","A:/","A:#contact","BUTTON:Play the cued repository: opens it","BUTTON:shuffle-play","A:https://github.com/SairaDev02/unmei-vn","A:https://github.com/SairaDev02/pi-tools-saira","A:https://github.com/SairaDev02/sillytavern-vault","A:https://github.com/SairaDev02/hermes-skills-saira","A:https://github.com/SairaDev02","A:https://crates.io/users/SairaDev02","BUTTON:Shuffle the queue","BUTTON:Previous in queue","BUTTON:Play: open the cued repository","BUTTON:Next in queue","BUTTON:Lyrics","BUTTON:Queue","BODY:Skip to repositori","A:#repositories","A:/","A:/","A:#contact","BUTTON:Play the cued repository: opens it","BUTTON:shuffle-play","A:https://github.com/SairaDev02/unmei-vn","A:https://github.com/SairaDev02/pi-tools-saira","A:https://github.com/SairaDev02/sillytavern-vault","A:https://github.com/SairaDev02/hermes-skills-saira","A:https://github.com/SairaDev02","A:https://crates.io/users/SairaDev02","BUTTON:Shuffle the queue","BUTTON:Previous in queue"]
+w800 canvas tabIndex -1
+w800 focused element vs dock {"top":848.15625,"bottom":880.15625,"barTop":827.3125}
+w800 row focus cue {"num":"03","title":"sillytavern-vault","flag":"cue","dock":"03 sillytavern-vault","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w800 load a {"num":"03","title":"Loading sillytavern-vault","flag":"play","dock":"03 sillytavern-vault","kicker":"Now playing","playing":true,"url":"https://sairadev02.github.io/"}
+w800 load b {"num":"03","title":"Loading sillytavern-vault","flag":"play","dock":"03 sillytavern-vault","kicker":"Now playing","playing":true,"url":"https://sairadev02.github.io/"}
+w800 load c {"num":"03","title":"Loading sillytavern-vault","flag":"play","dock":"03 sillytavern-vault","kicker":"Now playing","playing":true,"url":"https://sairadev02.github.io/"}
+w800 next clicked during load (ignored?) "clicked"
+w800 LCD after next-during-load {"num":"03","title":"Loading sillytavern-vault","flag":"play","dock":"03 sillytavern-vault","kicker":"Now playing","playing":true,"url":"https://sairadev02.github.io/"}
+w800 after load {"url":"https://github.com/SairaDev02/sillytavern-vault"}
+w800 after back {"num":"--","title":"Drag a disc","flag":"drag","dock":"01 unmei-vn","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w800 canvas after back {"distinct":6,"w":512,"h":224}
+w800 console errors []
+w375 geometry {"n":4,"canvas":{"x":59.5,"y":138,"width":256,"height":320},"narrow":true,"r":31,"rscreen":31}
+w375 idle {"num":"--","title":"Drag a disc","flag":"drag","dock":"01 unmei-vn","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w375 horizontalOverflow 0
+w375 hover disc 2 {"num":"03","title":"sillytavern-vault","flag":"cue","dock":"03 sillytavern-vault","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w375 after pointer leaves disc {"num":"--","title":"Drag a disc","flag":"drag","dock":"03 sillytavern-vault","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w375 hover row 3 {"num":"04","title":"hermes-skills-saira","flag":"cue","dock":"04 hermes-skills-saira","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/","on":1}
+w375 focus row 3 {"num":"04","title":"hermes-skills-saira","flag":"cue","dock":"04 hermes-skills-saira","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w375 blur row {"num":"--","title":"Drag a disc","flag":"drag","dock":"04 hermes-skills-saira","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w375 dragging in sky {"num":"02","title":"pi-tools-saira","flag":"cue","dock":"02 pi-tools-saira","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w375 dropped in sky {"num":"02","title":"pi-tools-saira","flag":"cue","dock":"02 pi-tools-saira","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w375 dropped on body {"num":"02","title":"pi-tools-saira","flag":"cue","dock":"02 pi-tools-saira","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w375 over tray (held) {"num":"04","title":"Release to load","flag":"load","dock":"04 hermes-skills-saira","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w375 over tray then pointer outside canvas (still pressed) {"num":"04","title":"hermes-skills-saira","flag":"cue","dock":"04 hermes-skills-saira","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w375 released outside canvas {"num":"--","title":"Drag a disc","flag":"drag","dock":"04 hermes-skills-saira","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w375 after wait (did it navigate?) {"num":"--","title":"Drag a disc","flag":"drag","dock":"04 hermes-skills-saira","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w375 click on body (no disc) {"num":"--","title":"Drag a disc","flag":"drag","dock":"04 hermes-skills-saira","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w375 next {"before":"04 hermes-skills-saira","after":"01 unmei-vn","lcd":"unmei-vn"}
+w375 prev x2 "03 sillytavern-vault"
+w375 shuffle button hidden in dock true
+w375 shuffle aria ["false"]
+w375 LCD after dock cue {"num":"03","title":"sillytavern-vault","flag":"cue","dock":"03 sillytavern-vault","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w375 shuffle button hidden in dock true
+w375 lyrics box {"panelTop":223.3125,"panelH":444,"barH":72.6875,"vh":740}
+w375 lyrics lines {"n":16,"now":"A local-first character card gallery that runs entirely in"}
+w375 canvas colours with lyrics open {"distinct":6,"w":256,"h":320}
+w375 canvas vs panel {"canvasTop":138,"canvasBottom":458,"panelTop":223.3125,"vh":740}
+w375 Escape closes lyrics; focus {"hidden":true,"active":"BUTTON:Lyrics"}
+w375 canvas colours after close {"distinct":6,"w":256,"h":320}
+w375 queue items ["sillytavern-vault","hermes-skills-saira","unmei-vn","pi-tools-saira"]
+w375 lyrics replaces queue? [lyricsHidden, queueHidden] [false,true]
+w375 queue pick cues {"picked":"unmei-vn","num":"01","title":"unmei-vn","flag":"cue","dock":"01 unmei-vn","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w375 move up focus kept null
+w375 target sizes [["[data-np=\"play\"]",56,56],["[data-np=\"next\"]",32,32],["[data-np=\"prev\"]",32,32],["[data-np=\"shuffle\"]",null],["[data-np-panel=\"lyrics\"]",32,32],["[data-np-panel=\"queue\"]",32,32],["[data-move]",26,26],["[data-q-handle]",22,26],["[data-q-pick]",251,34]]
+w375 tab order (40) ["BUTTON:Previous in queue","BUTTON:Play: open the cued repository","BUTTON:Next in queue","BUTTON:Lyrics","BUTTON:Queue","BODY:Skip to repositori","A:#repositories","A:/","A:/","A:#contact","BUTTON:Play the cued repository: opens it","BUTTON:shuffle-play","A:https://github.com/SairaDev02/unmei-vn","A:https://github.com/SairaDev02/pi-tools-saira","A:https://github.com/SairaDev02/sillytavern-vault","A:https://github.com/SairaDev02/hermes-skills-saira","A:https://github.com/SairaDev02","A:https://crates.io/users/SairaDev02","BUTTON:Previous in queue","BUTTON:Play: open the cued repository","BUTTON:Next in queue","BUTTON:Lyrics","BUTTON:Queue","BODY:Skip to repositori","A:#repositories","A:/","A:/","A:#contact","BUTTON:Play the cued repository: opens it","BUTTON:shuffle-play","A:https://github.com/SairaDev02/unmei-vn","A:https://github.com/SairaDev02/pi-tools-saira","A:https://github.com/SairaDev02/sillytavern-vault","A:https://github.com/SairaDev02/hermes-skills-saira","A:https://github.com/SairaDev02","A:https://crates.io/users/SairaDev02","BUTTON:Previous in queue","BUTTON:Play: open the cued repository","BUTTON:Next in queue","BUTTON:Lyrics"]
+w375 canvas tabIndex -1
+w375 focused element vs dock {"top":688.15625,"bottom":720.15625,"barTop":667.3125}
+w375 row focus cue {"num":"03","title":"sillytavern-vault","flag":"cue","dock":"03 sillytavern-vault","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+w375 load a {"num":"03","title":"Loading sillytavern-vault","flag":"play","dock":"03 sillytavern-vault","kicker":"Now playing","playing":true,"url":"https://sairadev02.github.io/"}
+w375 load b {"num":"03","title":"Loading sillytavern-vault","flag":"play","dock":"03 sillytavern-vault","kicker":"Now playing","playing":true,"url":"https://sairadev02.github.io/"}
+w375 load c {"num":"03","title":"Loading sillytavern-vault","flag":"play","dock":"03 sillytavern-vault","kicker":"Now playing","playing":true,"url":"https://sairadev02.github.io/"}
+w375 next clicked during load (ignored?) "clicked"
+w375 LCD after next-during-load {"num":"03","title":"Loading sillytavern-vault","flag":"play","dock":"03 sillytavern-vault","kicker":"Now playing","playing":true,"url":"https://sairadev02.github.io/"}
+w375 after load {"url":"https://sairadev02.github.io/"}
+w375 console errors []
+rm hover {"num":"03","title":"sillytavern-vault","flag":"cue","dock":"03 sillytavern-vault","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+rm lyrics [now, past] counts after 3s [1,0]
+rm over tray {"num":"04","title":"Release to load","flag":"load","dock":"04 hermes-skills-saira","kicker":"Up next","playing":false,"url":"https://sairadev02.github.io/"}
+node:internal/modules/run_main:111
+    triggerUncaughtException(
+    ^
+
+page.evaluate: Execution context was destroyed, most likely because of a navigation
+    at lcd (C:\Users\FerdinandM\Desktop\saira-site\.claude\worktrees\agent-abf1da8ad44ba360f\docs\research\player-ux-audit\audit.mjs:38:28)
+    at C:\Users\FerdinandM\Desktop\saira-site\.claude\worktrees\agent-abf1da8ad44ba360f\docs\research\player-ux-audit\audit.mjs:217:42 {
+  log: [],
+  name: 'Error'
+}
+
+Node.js v26.13.0
