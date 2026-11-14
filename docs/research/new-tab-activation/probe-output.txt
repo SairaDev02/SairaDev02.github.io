@@ -1,0 +1,6 @@
+Chromium 158.0.8127.18
+A quick click events(ms)= [["pointerdown",311],["mousedown",311],["pointerup",312],["mouseup",312]] activeSpans(ms)= [[62,5316]]
+B mouse down, hold 3 s, up events(ms)= [["pointerdown",310],["mousedown",310],["pointerup",3325],["mouseup",3325]] activeSpans(ms)= [[50,5313]]
+C Enter keydown events(ms)= [["keydown",305]] activeSpans(ms)= [[50,5364]]
+D Escape keydown events(ms)= [["keydown",313]] activeSpans(ms)= [[51,5004]]
+E touch tap (pointerup/touchend) events(ms)= [["pointerdown",310],["pointerup",310],["mousedown",311],["mouseup",311]] activeSpans(ms)= [[59,5313]]
