@@ -17,6 +17,14 @@ The picture of the player with its discs, together with the LCD faceplate beneat
 The fixed now-playing bar at the bottom of the page, with its Lyrics and Queue panels.
 _Avoid_: music player, now-playing bar
 
+**Cue**:
+The Dock's current track, which its Play button plays.
+_Avoid_: selection, up next (as a noun)
+
+**Preview**:
+A disc's details shown while it is pointed at or focused; it changes nothing else.
+_Avoid_: hover (as a domain term)
+
 **Play**:
 A disc's timed stay in the CD player, begun by opening its repository in a new tab.
 _Avoid_: navigate, listen
