@@ -33,7 +33,10 @@ test.describe('page content', () => {
   });
 
   test('draws the CD player picture', async ({ page }) => {
-    const canvas = page.getByRole('img', { name: /A CD player in a cloudy sky beside 4 discs/ });
+    // The alt text says what a disc does: opens the repository in a new tab, plays 30 s.
+    const canvas = page.getByRole('img', {
+      name: /A CD player in a cloudy sky beside 4 discs, one per public repository\. Clicking a disc or dragging it into the player opens that repository in a new tab and plays it for 30 seconds; the track list below does the same\./,
+    });
     await expect(canvas).toBeVisible();
     // More than one colour on the canvas means the scene rendered.
     await expect
