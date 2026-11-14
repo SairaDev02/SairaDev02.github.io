@@ -76,7 +76,7 @@ test.describe('now-playing dock', () => {
 
     await page.mouse.move(0, 0);
     await expect(row).not.toHaveClass(/\bhov\b/);
-    await expect(page.locator('[data-lcd-title]')).toHaveText('Drag a disc');
+    await expect(page.locator('[data-lcd-title]')).toHaveText('Pick a disc');
     await expect(dockTitle(page)).toHaveText('01 tidepool');
   });
 
@@ -86,11 +86,23 @@ test.describe('now-playing dock', () => {
     const { g, at } = await picture(page);
     await page.mouse.move(...at(...layoutDiscs(4, g.discArea).slots[2]));
     await expect(page.locator('[data-lcd-title]')).toHaveText('quiet-notes');
+    await expect(page.locator('[data-lcd-info]')).toContainText('Text · updated 2026.07.01');
     await expect(dockTitle(page)).toHaveText('01 tidepool');
+    // A preview is never announced.
+    await expect(page.getByRole('status')).toHaveText('');
 
     await page.mouse.move(0, 0);
-    await expect(page.locator('[data-lcd-title]')).toHaveText('Drag a disc');
+    await expect(page.locator('[data-lcd-title]')).toHaveText('Pick a disc');
     await expect(dockTitle(page)).toHaveText('01 tidepool');
+    await expect(page.getByRole('status')).toHaveText('');
+  });
+
+  test('hovering the faceplate announces nothing and changes nothing', async ({ page }) => {
+    await page.locator('[data-lcd]').hover();
+    await expect(page.locator('[data-lcd-title]')).toHaveText('Pick a disc');
+    await expect(page.getByRole('status')).toHaveText('');
+    // The faceplate is a quiet view: the page's status is its one live region.
+    await expect(page.locator('[aria-live]')).toHaveCount(0);
   });
 
   test('previous and next step through the queue and wrap round', async ({ page }) => {

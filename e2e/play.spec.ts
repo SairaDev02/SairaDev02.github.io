@@ -83,7 +83,7 @@ test.describe('a play on the clock', () => {
     await expect(page.locator('[data-dock]')).not.toHaveClass(/is-playing/);
     await expect(page.locator('[data-np-kicker]')).toHaveText('Up next');
     await expect(page.locator('[data-np-title]')).toHaveText('02 paper-lantern');
-    await expect(page.locator('[data-lcd-title]')).toHaveText('Drag a disc');
+    await expect(page.locator('[data-lcd-title]')).toHaveText('Pick a disc');
   });
 
   test('a return follows the Queue order the panel set', async ({ page }) => {
@@ -126,7 +126,7 @@ test.describe('a play on the clock', () => {
     await page.evaluate(() => window.dispatchEvent(new Event('visibilitychange')));
 
     await expect(page.locator('[data-dock]')).not.toHaveClass(/is-playing/);
-    await expect(page.locator('[data-lcd-title]')).toHaveText('Drag a disc');
+    await expect(page.locator('[data-lcd-title]')).toHaveText('Pick a disc');
   });
 
   test('announces a play, a reopen and the return', async ({ page }) => {
@@ -150,6 +150,140 @@ test.describe('a play on the clock', () => {
     await page.clock.fastForward(15_100);
     await expect(page.locator('[data-dock]')).not.toHaveClass(/is-playing/);
   });
+
+  test('with reduced motion, the play still counts on the faceplate', async ({ page }) => {
+    // An installed clock still flows with real time; paused it moves only when told to.
+    await page.clock.pauseAt(new Date('2026-01-01T00:00:02Z'));
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await playButton(page).click();
+    await page.clock.fastForward(1_600);
+    await expect(page.locator('[data-lcd-num]')).toHaveText('0:00');
+    await expect(page.locator('[data-lcd-of]')).toHaveText('/0:30');
+
+    await page.clock.fastForward(5_000);
+    await expect(page.locator('[data-lcd-num]')).toHaveText('0:05');
+    await expect(page.locator('[data-lcd-title]')).toHaveText('tidepool');
+  });
+});
+
+test.describe('ending a play early', () => {
+  test.beforeEach(async ({ page }) => {
+    // The tab is not the subject: only the faceplate's Eject is.
+    await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
+    await page.addInitScript(() => {
+      window.open = (() => ({ opener: null })) as unknown as typeof window.open;
+    });
+    await page.goto('/');
+  });
+
+  test('Eject ends the play, sends the disc home and lands focus on the Dock’s Play', async ({ page }) => {
+    await playButton(page).click();
+    // Only a play has the button: the load has no Eject yet.
+    await expect(page.locator('[data-lcd-eject]')).toBeHidden();
+    await page.clock.fastForward(1_600);
+
+    const eject = page.locator('[data-lcd-eject]');
+    await expect(eject).toBeVisible();
+    await expect(eject).toHaveAccessibleName('Eject tidepool');
+    // The info line reads language · dotted date · description.
+    await expect(page.locator('[data-lcd-info]')).toContainText('Rust · updated 2026.10.20 · Command-line synthesiser for tide charts.');
+    await eject.focus();
+    await page.keyboard.press('Enter');
+
+    await expect(status(page)).toHaveText('tidepool ejected');
+    await expect(page.locator('[data-dock]')).not.toHaveClass(/is-playing/);
+    await expect(page.locator('[data-lcd-title]')).toHaveText('Pick a disc');
+    await expect(eject).toBeHidden();
+    // The button left with the play, so focus took the Dock's own Play, not the header's.
+    await expect(page.locator('[data-dock] [data-np="play"]')).toBeFocused();
+    // An Eject keeps the Cue.
+    await expect(page.locator('[data-np-title]')).toHaveText('01 tidepool');
+  });
+});
+
+/**
+ * Hovers a point until the faceplate names what the pointer found there. A disc still
+ * gliding home is not under the pointer yet, and only a new pointermove asks again.
+ */
+const hoverUntil = async (
+  page: Page,
+  at: (x: number, y: number) => readonly [number, number],
+  [x, y]: readonly [number, number],
+  title: string,
+) =>
+  expect
+    .poll(async () => {
+      await page.mouse.move(...at(x, y));
+      await page.mouse.move(...at(x + 1, y + 1));
+      return page.locator('[data-lcd-title]').textContent();
+    })
+    .toBe(title);
+
+test.describe('dragging on the picture', () => {
+  test.beforeEach(async ({ page, isMobile }) => {
+    test.skip(isMobile, 'drag with a pointer');
+    await page.addInitScript(() => {
+      window.open = (() => ({ opener: null })) as unknown as typeof window.open;
+    });
+    await page.goto('/');
+    await waitForScene(page);
+  });
+
+  test('dragging the playing disc out ejects it, and it stays where it lands', async ({ page }) => {
+    const { g, at } = await picture(page);
+    const slot = layoutDiscs(4, g.discArea).slots[0];
+    // The gap between the four resting discs: clear of every slot by a disc's width.
+    const sky = [g.discArea.x0 + (g.discArea.x1 - g.discArea.x0) / 2, g.discArea.y0 + (g.discArea.y1 - g.discArea.y0) / 2] as const;
+    await page.mouse.click(...at(...slot));
+    // Presses during the load are ignored: the disc has to land before it can be dragged.
+    await expect(page.locator('[data-lcd-title]')).toHaveText('tidepool');
+
+    await page.mouse.move(...at(g.tray.x, g.tray.y));
+    await page.mouse.down();
+    await page.mouse.move(...at(...sky), { steps: 12 });
+    await page.mouse.up();
+
+    await expect(status(page)).toHaveText('tidepool ejected');
+    await expect(page.locator('[data-dock]')).not.toHaveClass(/is-playing/);
+    // It stayed where it landed: the pointer finds it in the sky, and not in its slot.
+    await hoverUntil(page, at, sky, 'tidepool');
+    await hoverUntil(page, at, slot, 'Pick a disc');
+  });
+
+  test('a drop on the player body returns the disc to its slot', async ({ page }) => {
+    const { g, at } = await picture(page);
+    const slot = layoutDiscs(4, g.discArea).slots[0];
+    const body = [g.body.x0 + 10, g.body.y1 - 8] as const;
+    await page.mouse.click(...at(...slot));
+    await expect(page.locator('[data-lcd-title]')).toHaveText('tidepool');
+
+    await page.mouse.move(...at(g.tray.x, g.tray.y));
+    await page.mouse.down();
+    await page.mouse.move(...at(...body), { steps: 12 });
+    await page.mouse.up();
+
+    await expect(status(page)).toHaveText('tidepool ejected');
+    // Home again: the pointer finds it in its slot, not where it was dropped.
+    await hoverUntil(page, at, slot, 'tidepool');
+    await hoverUntil(page, at, body, 'Pick a disc');
+  });
+
+  test('Escape cancels a drag and nothing plays', async ({ page }) => {
+    const { g, at } = await picture(page);
+    const slot = layoutDiscs(4, g.discArea).slots[1];
+    await page.mouse.move(...at(...slot));
+    await page.mouse.down();
+    await page.mouse.move(...at(g.tray.x, g.tray.y), { steps: 10 });
+    // Held over the tray the faceplate offers the release; Escape takes it back.
+    await expect(page.locator('[data-lcd-title]')).toHaveText('Release to play');
+    await page.keyboard.press('Escape');
+    await page.mouse.up();
+
+    await expect(status(page)).toHaveText('');
+    await expect(page.locator('[data-dock]')).not.toHaveClass(/is-playing/);
+    // The disc went back to the slot it came from.
+    await hoverUntil(page, at, slot, 'paper-lantern');
+  });
 });
 
 test.describe('a blocked tab', () => {
@@ -164,6 +298,46 @@ test.describe('a blocked tab', () => {
     await playButton(page).click();
     await expect(status(page)).toHaveText('New tab blocked. Click tidepool to open it');
     await expect(page.locator('[data-dock]')).not.toHaveClass(/is-playing/);
-    await expect(page.locator('[data-lcd-title]')).toHaveText('Drag a disc');
+    // The faceplate keeps the block until the next Preview, drag or play.
+    await expect(page.locator('[data-lcd-title]')).toHaveText('Tab blocked');
+    await expect(page.locator('[data-lcd-info]')).toContainText('Click the disc to open tidepool');
+  });
+
+  test('lets the next preview take the faceplate back', async ({ page, isMobile }) => {
+    test.skip(isMobile, 'no hover on touch screens');
+    await playButton(page).click();
+    await expect(page.locator('[data-lcd-title]')).toHaveText('Tab blocked');
+
+    await page.locator('[data-track="2"]').hover();
+    await expect(page.locator('[data-lcd-title]')).toHaveText('quiet-notes');
+  });
+});
+
+test.describe('a drop whose user activation ran out', () => {
+  test('blocks the tab and says so on the faceplate', async ({ page, isMobile }) => {
+    test.skip(isMobile, 'drag with a pointer');
+    // A browser refuses a new tab once user activation has run out (Chromium: 5 s from
+    // the press). A pointer drag's own drop is a gesture, and Playwright's Chromium allows
+    // every popup, so the rule is emulated here — this is the browser's rule, not the
+    // page's: openTab → null → block runs as it does in a browser that refused the tab.
+    await page.addInitScript(() => {
+      const open = window.open.bind(window);
+      let pressed = -Infinity;
+      addEventListener('pointerdown', () => (pressed = Date.now()), true);
+      window.open = ((url?: string | URL, target?: string, features?: string) =>
+        Date.now() - pressed > 5000 ? null : open(url, target, features)) as typeof window.open;
+    });
+    await page.goto('/');
+    await waitForScene(page);
+    const { g, at } = await picture(page);
+    // No stub of the page's own path: the real press, the real wait, the real drop.
+    await page.mouse.move(...at(...layoutDiscs(4, g.discArea).slots[0]));
+    await page.mouse.down();
+    await page.waitForTimeout(6_000);
+    await page.mouse.move(...at(g.tray.x, g.tray.y), { steps: 10 });
+    await page.mouse.up();
+
+    await expect(page.locator('[data-lcd-title]')).toHaveText('Tab blocked');
+    await expect(page.locator('[data-dock]')).not.toHaveClass(/is-playing/);
   });
 });
