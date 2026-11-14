@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Track } from '../../lib/format';
-import { createPlayerState, type PlayerSnapshot } from '../player-state';
+import { createPlayerState, type PlayerSnapshot, type Progress } from '../player-state';
 import { IDLE_INFO, IDLE_TITLE, lcdView } from './lcd';
 
 const LOAD_MS = 1400;
@@ -29,7 +29,7 @@ const tracks = [
 
 /** The faceplate's five lines: the big digits, the small slot, the title, the info line,
  * the lamp (and the Eject button's track while a play runs). */
-const view = (s: Partial<PlayerSnapshot>, progress: ReturnType<ReturnType<typeof setup>['player']['progress']> = null, drag: { i: number; overTray: boolean } | null = null) =>
+const view = (s: Partial<PlayerSnapshot>, progress: Progress | null = null, drag: { i: number; overTray: boolean } | null = null) =>
   lcdView({ cued: 0, hover: -1, play: null, blocked: null, ...s }, progress, drag, tracks);
 
 function setup() {
