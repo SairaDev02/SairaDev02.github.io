@@ -15,7 +15,7 @@ const languages = [...new Set(repos.map((r) => r.language).filter((l) => l !== n
 ---
 
 <div class="plh">
-  <span class="art" aria-hidden="true"><Image src={SITE.avatar} width={256} height={256} format="webp" alt="" /></span>
+  <span class="art"><Image src={SITE.avatar} width={256} height={256} format="webp" alt={`${GITHUB_USER}’s GitHub avatar`} /></span>
   <div class="text">
     <p class="label">Public playlist · {repos.length} repositories</p>
     <h1 class="h">

@@ -37,6 +37,10 @@ test.describe('page content', () => {
     await expect(rows.filter({ hasText: 'SairaDev02.github.io' })).toHaveCount(0);
   });
 
+  test('names the cover art', async ({ page }) => {
+    await expect(page.getByRole('img', { name: 'SairaDev02’s GitHub avatar' })).toBeVisible();
+  });
+
   test('fills gaps in repository data', async ({ page }) => {
     const quiet = page.locator('[data-track="2"]');
     await expect(quiet).toContainText('No description.');
