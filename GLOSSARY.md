@@ -21,6 +21,10 @@ _Avoid_: music player, now-playing bar
 The Dock's current track, which its Play button plays.
 _Avoid_: selection, up next (as a noun)
 
+**Queue**:
+The order the Dock steps through: Prev and Next follow it, and a Return moves the Cue to the next disc in it.
+_Avoid_: up next, playlist
+
 **Preview**:
 A disc's details shown while it is pointed at or focused; it changes nothing else.
 _Avoid_: hover (as a domain term)
