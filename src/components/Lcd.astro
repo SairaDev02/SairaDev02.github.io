@@ -25,6 +25,8 @@ const { total } = Astro.props;
     <li data-f="load">Load</li>
     <li data-f="play">▶ Play</li>
   </ul>
+  <!-- PROTOTYPE (map #35) variant B: Eject on the faceplate while a disc plays. -->
+  <button type="button" class="eject" data-lcd-eject hidden>⏏ Eject</button>
 </div>
 
 <style>
@@ -108,6 +110,22 @@ const { total } = Astro.props;
   @keyframes blink {
     50% { color: rgb(255 214 10 / 0.25); }
   }
+
+  .lcd:global(.has-eject) .flags { display: none; }
+  .eject {
+    font: 700 11px/1 var(--pixel);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--on-sun);
+    background: var(--sun);
+    border: 0;
+    border-radius: 999px;
+    padding: 8px 12px;
+    min-height: 32px;
+    cursor: pointer;
+    box-shadow: 0 0 12px rgb(255 214 10 / 0.6);
+  }
+  .eject[hidden] { display: none; }
 
   @media (max-width: 420px) {
     .lcd { gap: 10px; padding: 0 10px; }

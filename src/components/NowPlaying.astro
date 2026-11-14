@@ -42,6 +42,7 @@ const { repos } = Astro.props;
   </section>
 
   <div class="bar" role="region" aria-label="Now playing">
+    <div class="proto-progress" data-proto-progress aria-hidden="true" hidden><i></i></div>
     <div class="track">
       <span class="disc" aria-hidden="true"></span>
       <div class="meta">
@@ -64,8 +65,10 @@ const { repos } = Astro.props;
             ><path d="M6 5v14M19 5 8 12l11 7z" fill="currentColor" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path></svg
           >
         </button>
-        <button type="button" data-np="play" class="play" aria-label="Play: open the cued repository">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"></path></svg>
+        <button type="button" data-np="play" class="play" aria-label="Play: open the cued repository in a new tab">
+          <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"></path></svg>
+          <!-- PROTOTYPE (map #35) variant A: Play turns into Eject during a play. -->
+          <svg class="i-eject" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5l7 8H5zM5 16h14v3H5z" fill="currentColor"></path></svg>
         </button>
         <button type="button" data-np="next" aria-label="Next in queue">
           <svg viewBox="0 0 24 24" aria-hidden="true"
@@ -198,6 +201,14 @@ const { repos } = Astro.props;
     box-shadow: 0 0 0 1px var(--accent), 0 0 18px rgb(255 214 10 / 0.6);
   }
   .ctrl .play:hover { color: var(--on-sun); transform: scale(1.06); }
+  /* PROTOTYPE (map #35) */
+  .bar { position: relative; }
+  .play .i-eject { display: none; }
+  .play:global(.as-eject) .i-play { display: none; }
+  .play:global(.as-eject) .i-eject { display: block; }
+  .proto-progress { position: absolute; left: 0; right: 0; top: -1px; height: 3px; background: var(--line); }
+  .proto-progress[hidden] { display: none; }
+  .proto-progress i { display: block; height: 100%; width: 0; background: var(--sun); box-shadow: 0 0 8px rgb(255 214 10 / 0.8); }
   @media (max-width: 599px) {
     .ctrl { gap: 2px; }
     .ctrl .shuffle { display: none; }

@@ -1,88 +1,117 @@
-// The one writer of "what is cued, hovered and loading" on the home page. The CD player,
-// the LCD, the track list and the now-playing dock all read it and send it intents; none
-// of them keeps its own copy. Loading a track ends in navigating to its repository.
+// PROTOTYPE (branch prototype/player-playback, map #35): the clock-driven play model from
+// "Playback model" (#41) and "Cueing" (#40). Throwaway: no tests, rewrite before shipping.
 //
-//   hover  transient: the disc or row under the pointer (-1 for none). Hovering cues.
-//   cued   sticky: the dock's track; survives the pointer leaving.
-//   loading the track whose load sequence runs; every other intent is ignored meanwhile.
+// The one writer of what is cued, previewed and playing. Everything about a play's
+// progress is derived from the wall clock, never from frames, so it stays right while the
+// tab is hidden (the repository opens in a new tab in front of this one).
+//
+//   hover  preview only: the disc or row under the pointer or focus (-1 for none).
+//   cued   the dock's track, which its Play button plays.
+//   play   the disc in the player and when its play began (null when the tray is empty).
+//          Its load runs for loadMs, then it plays for playMs, then it returns.
+
+export interface Play {
+  i: number;
+  startedAt: number;
+}
 
 export interface PlayerSnapshot {
   cued: number;
   hover: number;
-  loading: number | null;
+  play: Play | null;
 }
 
-export type Listener = (now: PlayerSnapshot, before: PlayerSnapshot) => void;
+/** Why the tray emptied or changed, for listeners that animate the disc going back. */
+export type Change = 'return' | 'eject' | 'drag-out' | 'swap';
+
+export type Listener = (now: PlayerSnapshot, before: PlayerSnapshot, why?: Change) => void;
+
+export interface Progress {
+  phase: 'load' | 'playing';
+  /** ms since the disc landed (0 during the load). */
+  elapsed: number;
+  /** 0 to 1 over the play time. */
+  done: number;
+}
 
 export interface PlayerState {
   get(): PlayerSnapshot;
+  progress(now?: number): Progress | null;
+  /** A load is running: every intent is ignored meanwhile. */
+  isLoading(): boolean;
   subscribe(fn: Listener): void;
   hover(i: number): void;
   cue(i: number): void;
+  /** Starts a play (swapping out a running one). The caller has already opened the tab. */
   play(i: number): void;
-  /** The scene's load animation finished: navigate now. */
-  arrive(): void;
-  /** Page came back from the back/forward cache mid-load: start over. */
-  reset(): void;
+  eject(how: 'eject' | 'drag-out'): void;
+  /** Ends a play whose time is up. Safe to call any time, any number of times. */
+  check(): void;
+  readonly loadMs: number;
+  readonly playMs: number;
 }
 
 export interface PlayerOptions {
-  urls: readonly string[];
-  navigate: (url: string) => void;
-  reducedMotion: () => boolean;
-  /** Navigate after this long even if the scene never reports arrival (paused loop). */
-  fallbackMs: number;
-  setTimer?: (fn: () => void, ms: number) => () => void;
+  loadMs: number;
+  playMs: number;
+  /** The track after `i` in the queue: a return cues it. */
+  next: (i: number) => number;
+  now?: () => number;
 }
 
-const browserTimer = (fn: () => void, ms: number) => {
-  const id = setTimeout(fn, ms);
-  return () => clearTimeout(id);
-};
-
 export function createPlayerState(o: PlayerOptions): PlayerState {
-  let s: PlayerSnapshot = { cued: 0, hover: -1, loading: null };
+  const now = o.now ?? Date.now;
+  let s: PlayerSnapshot = { cued: 0, hover: -1, play: null };
   const listeners: Listener[] = [];
-  let cancelFallback = () => {};
-  let left = false; // navigation started; the page stays "loading" until it unloads
+  let timer = 0;
 
-  const set = (next: PlayerSnapshot) => {
-    if (next.cued === s.cued && next.hover === s.hover && next.loading === s.loading) return;
+  const set = (next: PlayerSnapshot, why?: Change) => {
+    if (next.cued === s.cued && next.hover === s.hover && next.play === s.play) return;
     const before = s;
     s = next;
-    for (const fn of listeners) fn(s, before);
+    for (const fn of listeners) fn(s, before, why);
   };
-  const go = (i: number) => {
-    cancelFallback();
-    if (left) return;
-    left = true;
-    o.navigate(o.urls[i]);
+  const progress = (t = now()): Progress | null => {
+    if (!s.play) return null;
+    const e = t - s.play.startedAt;
+    if (e < o.loadMs) return { phase: 'load', elapsed: 0, done: 0 };
+    const elapsed = Math.min(o.playMs, e - o.loadMs);
+    return { phase: 'playing', elapsed, done: elapsed / o.playMs };
+  };
+  const isLoading = () => progress()?.phase === 'load';
+  const check = () => {
+    if (!s.play || now() < s.play.startedAt + o.loadMs + o.playMs) return;
+    clearTimeout(timer);
+    set({ ...s, play: null, cued: o.next(s.play.i) }, 'return');
   };
 
   return {
+    loadMs: o.loadMs,
+    playMs: o.playMs,
     get: () => s,
+    progress,
+    isLoading,
     subscribe: (fn) => void listeners.push(fn),
     hover(i) {
-      if (s.loading !== null) return;
-      set({ ...s, hover: i, cued: i >= 0 ? i : s.cued });
+      set({ ...s, hover: i });
     },
     cue(i) {
-      if (s.loading !== null) return;
-      set({ ...s, hover: i, cued: i });
+      if (isLoading()) return;
+      set({ ...s, cued: i });
     },
     play(i) {
-      if (s.loading !== null) return;
-      if (o.reducedMotion()) return go(i);
-      set({ cued: i, hover: i, loading: i });
-      cancelFallback = (o.setTimer ?? browserTimer)(() => go(i), o.fallbackMs);
+      if (isLoading()) return;
+      const why = s.play ? 'swap' : undefined;
+      clearTimeout(timer);
+      set({ ...s, cued: i, play: { i, startedAt: now() } }, why);
+      // Best effort only: hidden tabs throttle timers, so visibility and focus also call check().
+      timer = window.setTimeout(check, o.loadMs + o.playMs + 50);
     },
-    arrive() {
-      if (s.loading !== null) go(s.loading);
+    eject(how) {
+      if (!s.play || isLoading()) return;
+      clearTimeout(timer);
+      set({ ...s, play: null }, how);
     },
-    reset() {
-      cancelFallback();
-      left = false;
-      set({ ...s, hover: -1, loading: null });
-    },
+    check,
   };
 }

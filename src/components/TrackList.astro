@@ -123,5 +123,32 @@ const max = Math.max(1, ...repos.flatMap((r) => r.wave));
   .list .row:hover { background: rgb(255 255 255 / 0.55); }
   .list .row:global(.on) { background: var(--sun); color: var(--on-sun); }
   .list .row:global(.on) * { color: var(--on-sun); }
+  /* PROTOTYPE (map #35): the cued row's steady marker, and variant C's row Eject. */
+  .list li { position: relative; }
+  .list .row:global(.cued) { box-shadow: inset 3px 0 0 var(--accent); }
+  .list :global(.proto-row-eject) {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1;
+    font: 600 12px/1 var(--ui);
+    padding: 8px 12px;
+    min-height: 32px;
+    border: 1px solid var(--on-sun);
+    border-radius: 999px;
+    background: var(--bg);
+    color: var(--on-sun);
+    cursor: pointer;
+  }
+  .list :global(.proto-row-progress) {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    height: 3px;
+    width: 0;
+    background: var(--accent);
+    pointer-events: none;
+  }
   .row:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 </style>

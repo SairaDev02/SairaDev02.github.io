@@ -1,6 +1,6 @@
-// Load sequence, in seconds from the start of a load: the disc lifts, travels to the tray,
-// drops in, spins up, and the page navigates to the repository at GO.
-export const LOAD = { lift: 0.3, travel: 1.1, drop: 1.4, spin: 1.8, go: 2.4 } as const;
+// PROTOTYPE (map #35): load sequence, in seconds from the start of a play: the disc lifts,
+// travels to the tray and drops in; the play time starts when it lands.
+export const LOAD = { lift: 0.3, travel: 1.1, drop: 1.4, spin: 1.8 } as const;
 
-/** Navigate anyway if the picture's loop is paused (off screen) and never arrives. */
-export const FALLBACK_MS = (LOAD.go + 1.5) * 1000;
+/** Play time; `?playSec=8` shortens it for trying the return without waiting. */
+export const PLAY_MS = (Number(new URLSearchParams(location.search).get('playSec')) || 30) * 1000;

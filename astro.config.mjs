@@ -20,6 +20,8 @@ const ogCardRoute = {
 // Served as the GitHub Pages user page, so at the domain root: no `base`.
 export default defineConfig({
   site: 'https://sairadev02.github.io',
+  // PROTOTYPE (map #35): the dev toolbar covers the dock's transport.
+  devToolbar: { enabled: false },
   // The stylesheet is small; inlining it removes a render-blocking request.
   build: { inlineStylesheets: 'always' },
   security: {
