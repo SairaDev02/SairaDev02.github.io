@@ -4,8 +4,6 @@
 import type { APIRequestContext, ConsoleMessage, Page } from '@playwright/test';
 import { expect, test } from './test';
 
-const CUED_REPO = 'https://github.com/SairaDev02/paper-lantern';
-
 /** The window the init script and the reads below share. */
 interface PolicyWindow extends Window {
   cspViolations: string[];
@@ -218,20 +216,24 @@ test.describe('nothing is blocked', () => {
     expect(errors, 'policy console errors').toEqual([]);
   });
 
-  test('holds while a track loads and the page navigates', async ({ page }) => {
+  test('holds while a disc plays', async ({ page }) => {
     await watchPolicy(page);
+    // The tab a play opens is another document; the page that plays is the one under test.
+    await page.addInitScript(() => {
+      window.open = (() => ({ opener: null })) as unknown as typeof window.open;
+    });
     await page.goto('/');
     const errors = policyErrors(page);
 
-    await page.locator('[data-track="1"]').click();
-    await expect(page.locator('[data-lcd-title]')).toHaveText('Loading paper-lantern');
-    // The load sequence is running, so its document is still current: read what it has
-    // recorded so far. Playwright cannot evaluate in a document once the navigation the
-    // sequence makes is in flight, so the rest is covered by the console listener.
-    expect(await violations(page), 'CSP violations from the load sequence').toEqual([]);
+    await page.getByRole('button', { name: 'Play: open the cued repository' }).click();
+    await expect(page.locator('[data-lcd-title]')).toHaveText('Loading tidepool');
+    await expect(page.locator('[data-dock]')).toHaveClass(/is-playing/);
+    // The play writes to the document (the waveform fill, the status, the load's animation):
+    // read what it has recorded so far, and again once the load has given way to the play.
+    expect(await violations(page), 'CSP violations from the load').toEqual([]);
 
-    await page.waitForURL(CUED_REPO);
+    await expect(page.locator('[data-lcd-title]')).toHaveText('tidepool');
+    expect(await violations(page), 'CSP violations from the play').toEqual([]);
     expect(errors, 'policy console errors').toEqual([]);
-    expect(await page.title()).toBe('GitHub stub');
   });
 });

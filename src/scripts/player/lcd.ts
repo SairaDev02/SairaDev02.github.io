@@ -1,7 +1,7 @@
 // The CD player's LCD faceplate (Lcd.astro): track counter, title line, an info line that
 // scrolls as a marquee only when it overflows, and DRAG / LOAD / PLAY lamps.
 import { languageOf, trackNo, type Track } from '../../lib/format';
-import type { PlayerSnapshot } from '../player-state';
+import type { PlayerSnapshot, Progress } from '../player-state';
 import { reducedMotion } from '../render/canvas';
 
 export type LcdFlag = 'drag' | 'cue' | 'load' | 'play';
@@ -19,9 +19,18 @@ export const IDLE_INFO = 'Each disc is a repository. Drag one into the player, o
 
 const info = (t: Track) => `${languageOf(t)} · updated ${t.pushedAt.slice(0, 10)}${t.description ? ` · ${t.description}` : ''}`;
 
-/** What the faceplate shows: a load beats a drag over the tray, which beats a hover. */
-export function lcdView(s: PlayerSnapshot, drag: { i: number; overTray: boolean } | null, tracks: readonly Track[]): LcdState {
-  if (s.loading !== null) return { n: s.loading, title: `Loading ${tracks[s.loading].name}`, info: info(tracks[s.loading]), flag: 'play' };
+/** What the faceplate shows: a play beats a drag over the tray, which beats a preview. */
+export function lcdView(
+  s: PlayerSnapshot,
+  p: Progress | null,
+  drag: { i: number; overTray: boolean } | null,
+  tracks: readonly Track[],
+): LcdState {
+  if (s.play && p) {
+    const t = tracks[s.play.i];
+    const title = p.phase === 'load' ? `Loading ${t.name}` : t.name;
+    return { n: s.play.i, title, info: info(t), flag: 'play' };
+  }
   if (drag?.overTray) return { n: drag.i, title: 'Release to load', info: `${tracks[drag.i].name} · ${info(tracks[drag.i])}`, flag: 'load' };
   const i = drag?.i ?? s.hover;
   if (i >= 0) return { n: i, title: tracks[i].name, info: info(tracks[i]), flag: 'cue' };
