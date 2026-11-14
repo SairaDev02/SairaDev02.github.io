@@ -16,6 +16,8 @@
   --fg: #0c1233;
   --muted: #42507c;
   --accent: #1d3fd0;
+  /* The cued row's outline and glow. */
+  --cue: #78a0f5;
   --on-accent: #ffffff;
   --line: rgb(29 63 208 / 0.28);
   --line-strong: rgb(29 63 208 / 0.35);

@@ -48,9 +48,12 @@ const openAndPlay = (i: number) => {
   playHere(i);
 };
 
-// A return is committed by the clock: say so, and say nothing else.
-player.subscribe((_now, before, why) => {
+// One voice for the page's status region: committed changes only, never a preview, a drag
+// or a clock tick. A Cue change with nothing playing comes from the Dock's Prev, Next or
+// Queue pick; a play and a reopen are announced where the tab opens.
+player.subscribe((now, before, why) => {
   if (why === 'return' && before.play) announce(`${tracks[before.play.i].name} returned`);
+  else if (now.cued !== before.cued && !now.play) announce(`Cued ${tracks[now.cued].name}`);
 });
 
 // Track list rows: a plain click opens the tab like every other route; modified and middle
@@ -58,11 +61,8 @@ player.subscribe((_now, before, why) => {
 const rows = [...document.querySelectorAll<HTMLAnchorElement>('[data-track]')];
 rows.forEach((a) => {
   const i = Number(a.dataset.track);
-  // Temporary, until the Cue stops following a preview (#49): hovering still cues the Dock.
-  const preview = () => {
-    player.hover(i);
-    player.cue(i);
-  };
+  // Pointing at or focusing a row only previews it: the Cue stays where the Dock has it.
+  const preview = () => player.hover(i);
   a.addEventListener('pointerenter', preview);
   a.addEventListener('focus', preview);
   a.addEventListener('pointerleave', () => player.hover(-1));
@@ -77,11 +77,19 @@ rows.forEach((a) => {
     if (e.button === 1) playHere(i);
   });
 });
-// What is playing fills its row; hovering still cues the Dock until the Cue's own ticket.
-player.subscribe((s) => {
-  const active = s.play?.i ?? s.hover;
-  for (const a of rows) a.classList.toggle('on', Number(a.dataset.track) === active);
-});
+// What is playing fills its row, a preview washes it, and the Cue carries its own marker:
+// the picture and the rows show the Preview and the play, never the Cue.
+const markRows = () => {
+  const s = player.get();
+  for (const a of rows) {
+    const i = Number(a.dataset.track);
+    a.classList.toggle('on', i === s.play?.i);
+    a.classList.toggle('hov', i === s.hover && i !== s.play?.i);
+    a.classList.toggle('cued', i === s.cued);
+  }
+};
+player.subscribe(markRows);
+markRows();
 
 nextAfter = mountDock(document.querySelector<HTMLElement>('[data-dock]')!, tracks, player, openAndPlay).nextAfter;
 mountCdPlayer(document.querySelector<HTMLElement>('[data-player]')!, tracks, player, openAndPlay);

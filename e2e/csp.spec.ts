@@ -181,7 +181,7 @@ test.describe('nothing is blocked', () => {
     // queue button only exists once the script has read it.
     const graph = JSON.parse((await page.locator('script[type="application/ld+json"]').textContent()) ?? '');
     expect(graph['@context']).toBe('https://schema.org');
-    await page.getByRole('button', { name: 'Next in queue' }).click();
+    await page.getByRole('button', { name: 'Next: paper-lantern' }).click();
     await expect(page.getByRole('region', { name: 'Now playing' }).locator('[data-np-title]')).toHaveText('02 paper-lantern');
 
     expect(await violations(page)).toEqual([]);

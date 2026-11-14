@@ -7,6 +7,7 @@ import { dotDate, languageOf, plural, trackNo, type Track } from '../../lib/form
 import type { PlayerState } from '../player-state';
 import { reducedMotion } from '../render/canvas';
 import { LOAD } from '../player/timing';
+import { pick, stepView, type Step } from './controls';
 import { naturalOrder, reorder, shuffleAround, stepFrom, upNext } from './queue';
 
 const LINE_MS = 2600; // pace of the lyric highlight
@@ -34,6 +35,13 @@ export function mountDock(dock: HTMLElement, tracks: readonly Track[], player: P
     if (open === 'lyrics') renderLyrics();
     if (open === 'queue') renderQueue();
   };
+  // Prev and Next name their target and what pressing them does, so their names follow the
+  // Cue and, while a play runs, the play.
+  const stepOf = (b: HTMLElement): Step => (b.dataset.np === 'next' ? 'next' : 'prev');
+  const transport = () => {
+    for (const b of dock.querySelectorAll<HTMLElement>('[data-np="prev"], [data-np="next"]'))
+      b.setAttribute('aria-label', stepView(stepOf(b), player.get(), queue, tracks).label);
+  };
   const setPlaying = (i: number | null) => {
     dock.classList.toggle('is-playing', i !== null);
     $('[data-np-kicker]').textContent = i === null ? 'Up next' : 'Now playing';
@@ -52,12 +60,14 @@ export function mountDock(dock: HTMLElement, tracks: readonly Track[], player: P
   player.subscribe((s, before) => {
     if (s.cued !== before.cued) show(s.cued);
     if (s.play !== before.play) setPlaying(s.play?.i ?? null);
+    transport();
   });
 
   const setShuffle = (on: boolean) => {
     shuffled = on;
     queue = on ? shuffleAround(n, cued()) : naturalOrder(n);
     for (const b of document.querySelectorAll('[data-np="shuffle"]')) b.setAttribute('aria-pressed', String(on));
+    transport();
     if (open === 'queue') renderQueue();
   };
 
@@ -77,9 +87,11 @@ export function mountDock(dock: HTMLElement, tracks: readonly Track[], player: P
           openAndPlay(queue[1 % n]); // the first track after the cued one
           break;
         case 'prev':
-        case 'next':
-          player.cue(stepFrom(queue, cued(), b.dataset.np === 'next' ? 1 : -1));
+        case 'next': {
+          const { to } = stepView(stepOf(b), player.get(), queue, tracks);
+          pick(to, player, openAndPlay);
           break;
+        }
       }
     });
 
@@ -160,6 +172,8 @@ export function mountDock(dock: HTMLElement, tracks: readonly Track[], player: P
     const next = upNext(queue, cued());
     nowList.replaceChildren(item(cued(), 0, 1, true));
     nextList.replaceChildren(...next.map((i, k) => item(i, k, next.length, false)));
+    // The Queue order is what a step follows, so its names change with it.
+    transport();
     if (focus) nextList.querySelector<HTMLElement>(`[data-i="${focus.i}"] [data-move="${focus.move}"]:not(:disabled)`)?.focus();
   };
 
@@ -173,7 +187,7 @@ export function mountDock(dock: HTMLElement, tracks: readonly Track[], player: P
       const from = upNext(queue, cued()).indexOf(i);
       queue = reorder(queue, cued(), from, from + Number(mv.dataset.move));
       renderQueue({ i, move: mv.dataset.move! });
-    } else if (target.closest('[data-q-pick]') && i !== cued()) player.cue(i);
+    } else if (target.closest('[data-q-pick]') && i !== cued()) pick(i, player, openAndPlay);
   });
 
   // Drag to reorder by the handle; pointer events, so touch works too.
@@ -211,5 +225,6 @@ export function mountDock(dock: HTMLElement, tracks: readonly Track[], player: P
   });
 
   show(cued());
+  transport();
   return { nextAfter: (i: number) => stepFrom(queue, i, 1) };
 }
