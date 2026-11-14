@@ -125,7 +125,8 @@ const max = Math.max(1, ...repos.flatMap((r) => r.wave));
   .list .row:global(.on) * { color: var(--on-sun); }
   /* PROTOTYPE (map #35): the cued row's steady marker, and variant C's row Eject. */
   .list li { position: relative; }
-  .list .row:global(.cued) { box-shadow: inset 3px 0 0 var(--accent); }
+  .list .row:global(.cued) { box-shadow: 0 0 0 1px rgb(120 160 245 / 0.9), 0 0 22px 4px rgb(120 160 245 / 0.55); }
+  .list .row:global(.cued:not(.on)) { background: rgb(169 195 246 / 0.35); }
   .list :global(.proto-row-eject) {
     position: absolute;
     right: 8px;
