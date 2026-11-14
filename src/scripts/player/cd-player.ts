@@ -1,5 +1,6 @@
-// Mounts the CD player picture: pointer gestures on the canvas (hover, click, drag and
-// drop), the render loop, the LCD, and the switch between the wide and portrait grids.
+// Mounts the CD player picture: pointer gestures on the canvas (hover, click, drag, drop,
+// Escape, and dragging the playing disc out to eject it), the render loop, the LCD with its
+// Eject button, and the switch between the wide and portrait grids.
 import type { Track } from '../../lib/format';
 import type { PlayerState } from '../player-state';
 import { frameLoop, readColours, reducedMotion, trackDevicePixelRatio, yieldToMain } from '../render/canvas';
@@ -10,10 +11,17 @@ import { CdScene } from './scene';
 /** CSS px of movement that turns a press into a drag. */
 const DRAG_PX = 4;
 
-export async function mountCdPlayer(root: HTMLElement, tracks: readonly Track[], player: PlayerState) {
+/** `openAndPlay` must run inside the gesture's event handler: it opens the tab there. */
+export async function mountCdPlayer(root: HTMLElement, tracks: readonly Track[], player: PlayerState, openAndPlay: (i: number) => void) {
   // `root` is the stage: its content width decides the canvas scale (in CSS).
   const canvas = root.querySelector<HTMLCanvasElement>('canvas')!;
-  const showLcd = mountLcd(root.querySelector<HTMLElement>('[data-lcd]')!);
+  const showLcd = mountLcd(
+    root.querySelector<HTMLElement>('[data-lcd]')!,
+    () => player.eject('eject'),
+    // The Eject button leaves with the play it ends: the visitor keeps their place at the
+    // Dock's Play rather than losing focus to the page.
+    () => document.querySelector<HTMLElement>('[data-dock] [data-np="play"]')?.focus(),
+  );
   const ctx = canvas.getContext('2d')!;
   const colours = {
     scene: readColours(root, ['--shade-0', '--shade-1', '--shade-2', '--shade-3']),
@@ -24,12 +32,11 @@ export async function mountCdPlayer(root: HTMLElement, tracks: readonly Track[],
   let scene: CdScene | null = null;
   let press: { id: number; x: number; y: number } | null = null;
 
-  const updateLcd = () => showLcd(lcdView(player.get(), scene?.drag ?? null, tracks));
+  const updateLcd = () => showLcd(lcdView(player.get(), player.progress(), scene?.drag ?? null, tracks));
   const loop = frameLoop(canvas, function* (t, still) {
     const s = scene;
     if (!s) return;
-    const arrived = yield* s.frame(t, player.get(), still);
-    if (arrived) player.arrive();
+    yield* s.frame(t, player.get(), still);
     // A grid switch may have replaced the scene (and resized the canvas) meanwhile.
     if (s === scene) ctx.putImageData(s.image, 0, 0);
   });
@@ -57,19 +64,26 @@ export async function mountCdPlayer(root: HTMLElement, tracks: readonly Track[],
   player.subscribe((s, before) => {
     updateLcd();
     redraw();
-    // A pick from the list or the dock may happen with the picture off screen, where
-    // the loop pauses: bring the player into view to show the load.
-    if (s.loading !== null && before.loading === null)
+    // A play from the list or the dock may start with the picture off screen, where the
+    // loop pauses: bring the player into view to show the load.
+    if (s.play && s.play !== before.play)
       canvas.scrollIntoView({ block: 'nearest', behavior: reducedMotion() ? 'auto' : 'smooth' });
   });
   updateLcd();
+  // The load gives way to the play on the clock, not on a state change: keep the faceplate
+  // and, under reduced motion, the picture in step with it while a disc plays.
+  setInterval(() => {
+    if (!player.get().play) return;
+    updateLcd();
+    redraw();
+  }, 250);
 
   // ---------- pointer ----------
   const toGrid = (e: { clientX: number; clientY: number }) => {
     const r = canvas.getBoundingClientRect();
     return [((e.clientX - r.left) / r.width) * canvas.width, ((e.clientY - r.top) / r.height) * canvas.height] as const;
   };
-  const busy = () => player.get().loading !== null;
+  const busy = () => player.isLoading();
   const setCursor = () => {
     canvas.style.cursor = scene?.drag?.moved ? 'grabbing' : player.get().hover >= 0 && !busy() ? 'grab' : '';
   };
@@ -104,15 +118,36 @@ export async function mountCdPlayer(root: HTMLElement, tracks: readonly Track[],
   const end = (e: PointerEvent, cancelled: boolean) => {
     if (!scene?.drag || press?.id !== e.pointerId) return;
     const i = scene.drag.i;
+    // A press that never moved is a click, which the drag cannot tell from a drop.
+    const clicked = !scene.drag.moved;
     press = null;
     if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
-    if (scene.endDrag(cancelled) === 'load') player.play(i);
+    // The tray's own disc being dragged out is an Eject; any other disc is on its way in.
+    const playing = player.get().play?.i === i;
+    const r = scene.endDrag(cancelled, playing);
+    if (r === 'load' && !playing) openAndPlay(i);
+    // A click on the playing disc is the Reopen route the Dock's Play also offers. A drag
+    // that leaves the tray and comes back, or Escape, is no click: the play just goes on.
+    else if (playing && clicked && !cancelled) openAndPlay(i);
+    if (r === 'drop' && playing) player.eject('drag-out');
     updateLcd();
     setCursor();
     redraw();
   };
   canvas.addEventListener('pointerup', (e) => end(e, false));
   canvas.addEventListener('pointercancel', (e) => end(e, true));
+  // Escape cancels any drag: the disc goes back and nothing plays.
+  addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || !scene?.drag || !press) return;
+    const id = press.id;
+    const playing = player.get().play?.i === scene.drag.i;
+    press = null;
+    if (canvas.hasPointerCapture(id)) canvas.releasePointerCapture(id);
+    scene.endDrag(true, playing);
+    updateLcd();
+    setCursor();
+    redraw();
+  });
   // Touch: a press on a disc must drag it, not scroll the page. Elsewhere the canvas
   // keeps scrolling vertically (touch-action: pan-y).
   canvas.addEventListener(

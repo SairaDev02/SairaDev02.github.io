@@ -24,8 +24,11 @@ const languages = [...new Set(repos.map((r) => r.language).filter((l) => l !== n
     </h1>
     <p class="stats">{commits} commits · {languages.join(' / ')} · updated {lastPush}</p>
     <div class="actions">
-      <button type="button" class="play" data-np="play" aria-label="Play the cued repository: opens it">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"></path></svg>
+      <button type="button" class="play" data-np="play" aria-label="Play the cued repository, opens in a new tab">
+        <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"></path></svg>
+        <svg class="i-reopen" viewBox="0 0 24 24" aria-hidden="true"
+          ><path d="M7 17 17 7M9 7h8v8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg
+        >
       </button>
       <button type="button" class="shuffle" data-np="shuffle-play">Shuffle</button>
     </div>
@@ -80,6 +83,11 @@ const languages = [...new Set(repos.map((r) => r.language).filter((l) => l !== n
     box-shadow: 0 0 0 1px var(--accent), 0 10px 28px -8px rgb(255 214 10 / 0.9);
   }
   .play svg { width: 24px; height: 24px; }
+  /* During a play this Play is named Reopen, like the Dock's, so it shows the same glyph.
+     The class arrives with the name (dock.ts). */
+  .play .i-reopen { display: none; }
+  .play:global(.is-reopen) .i-play { display: none; }
+  .play:global(.is-reopen) .i-reopen { display: block; }
   .play:hover { transform: scale(1.05); }
   .shuffle {
     font: 500 13px/1 var(--ui);

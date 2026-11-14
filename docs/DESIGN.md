@@ -24,6 +24,7 @@ now-playing dock, lyrics and a queue.
 | `--fg` / `--on-sun` | `#0c1233` | Text; text on yellow |
 | `--muted` | `#42507c` | Secondary text |
 | `--accent` | `#1d3fd0` | Labels, links, active navigation |
+| `--cue` | `#78a0f5` | The cued row's outline and glow |
 
 - Everything lit in the picture uses the four blue levels. Only emissive things (the
   pointer star, the display digits, the LED, sparkles) use the two yellows.

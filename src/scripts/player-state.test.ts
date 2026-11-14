@@ -1,88 +1,186 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createPlayerState } from './player-state';
 
-function setup(reduced = false) {
-  const navigate = vi.fn();
-  const timers: { fn: () => void; ms: number; live: boolean }[] = [];
+const LOAD_MS = 1400;
+const PLAY_MS = 30_000;
+
+/** A player on a hand-driven clock: a play's progress is only ever the clock's. */
+function setup() {
+  let t = 0;
   const player = createPlayerState({
-    urls: ['https://a', 'https://b', 'https://c'],
-    navigate,
-    reducedMotion: () => reduced,
-    fallbackMs: 3900,
-    setTimer: (fn, ms) => {
-      const t = { fn, ms, live: true };
-      timers.push(t);
-      return () => (t.live = false);
-    },
+    loadMs: LOAD_MS,
+    playMs: PLAY_MS,
+    next: (i) => (i + 1) % 4,
+    now: () => t,
   });
-  const fire = () => timers.filter((t) => t.live).forEach((t) => t.fn());
-  return { player, navigate, timers, fire };
+  const advance = (ms: number) => void (t += ms);
+  return { player, advance };
 }
 
 describe('player state', () => {
-  it('cues the first track at start, with nothing hovered or loading', () => {
-    expect(setup().player.get()).toEqual({ cued: 0, hover: -1, loading: null });
+  it('cues the first track at start, with nothing previewed or playing', () => {
+    expect(setup().player.get()).toEqual({ cued: 0, hover: -1, play: null, blocked: null });
   });
 
-  it('cues what is hovered and keeps the cue when the pointer leaves', () => {
+  it('previews what is hovered without moving the cue', () => {
     const { player } = setup();
     player.hover(2);
-    expect(player.get()).toMatchObject({ cued: 2, hover: 2 });
+    expect(player.get()).toEqual({ cued: 0, hover: 2, play: null, blocked: null });
     player.hover(-1);
-    expect(player.get()).toMatchObject({ cued: 2, hover: -1 });
+    expect(player.get()).toEqual({ cued: 0, hover: -1, play: null, blocked: null });
   });
 
-  it('notifies subscribers with the new and previous state, only on change', () => {
+  it('moves the cue without touching the preview', () => {
     const { player } = setup();
+    player.hover(2);
+    player.cue(3);
+    expect(player.get()).toEqual({ cued: 3, hover: 2, play: null, blocked: null });
+  });
+
+  it('has no progress while nothing plays', () => {
+    const { player } = setup();
+    expect(player.progress()).toBeNull();
+    expect(player.isLoading()).toBe(false);
+  });
+
+  it('loads, then plays, then returns at 30 s and cues the next track', () => {
+    const { player, advance } = setup();
+    player.play(2);
+    expect(player.get()).toEqual({ cued: 2, hover: -1, play: { i: 2, startedAt: 0 }, blocked: null });
+    expect(player.progress()).toEqual({ phase: 'load', elapsed: 0, done: 0 });
+    expect(player.isLoading()).toBe(true);
+
+    // The disc lands after the load; the 30 s start there, not at the press.
+    advance(LOAD_MS);
+    expect(player.isLoading()).toBe(false);
+    expect(player.progress()).toEqual({ phase: 'playing', elapsed: 0, done: 0 });
+    expect(player.progress(LOAD_MS + 15_000)).toEqual({ phase: 'playing', elapsed: 15_000, done: 0.5 });
+
+    // The clock alone ends nothing: check() commits the return, and the cue moves on.
+    advance(PLAY_MS - 1);
+    player.check();
+    expect(player.get().play).not.toBeNull();
+    advance(1);
+    player.check();
+    expect(player.get()).toEqual({ cued: 3, hover: -1, play: null, blocked: null });
+  });
+
+  it('tells subscribers why the tray changed', () => {
+    const { player, advance } = setup();
     const seen = vi.fn();
     player.subscribe(seen);
-    player.hover(1);
-    player.hover(1);
-    expect(seen).toHaveBeenCalledTimes(1);
-    expect(seen).toHaveBeenCalledWith({ cued: 1, hover: 1, loading: null }, { cued: 0, hover: -1, loading: null });
+    player.play(1);
+    advance(LOAD_MS + PLAY_MS);
+    player.check();
+    expect(seen).toHaveBeenLastCalledWith(
+      { cued: 2, hover: -1, play: null, blocked: null },
+      { cued: 1, hover: -1, play: { i: 1, startedAt: 0 }, blocked: null },
+      'return',
+    );
   });
 
-  it('ignores hover, cue and play while a track is loading', () => {
+  it('swaps a running play for another disc', () => {
+    const { player, advance } = setup();
+    player.play(1);
+    advance(LOAD_MS + 5000);
+    const seen = vi.fn();
+    player.subscribe(seen);
+    player.play(2);
+    expect(player.get().play).toEqual({ i: 2, startedAt: LOAD_MS + 5000 });
+    expect(player.progress()).toEqual({ phase: 'load', elapsed: 0, done: 0 });
+    expect(seen).toHaveBeenCalledWith(expect.anything(), expect.anything(), 'swap');
+  });
+
+  it('ignores a play and a cue while a disc is loading', () => {
+    const { player, advance } = setup();
+    player.play(1);
+    advance(LOAD_MS - 1);
+    player.play(2);
+    player.cue(3);
+    expect(player.get()).toEqual({ cued: 1, hover: -1, play: { i: 1, startedAt: 0 }, blocked: null });
+  });
+
+  it('keeps a running play when its own repository reopens', () => {
+    const { player, advance } = setup();
+    player.play(1);
+    advance(LOAD_MS + 10_000);
+    const seen = vi.fn();
+    player.subscribe(seen);
+    player.play(1);
+    expect(seen).not.toHaveBeenCalled();
+    expect(player.get().play).toEqual({ i: 1, startedAt: 0 });
+    // The 30 s still count from the first press.
+    advance(PLAY_MS - 10_000);
+    player.check();
+    expect(player.get().play).toBeNull();
+  });
+
+  it('ends a play at once on eject and keeps the cue where it was', () => {
+    const { player, advance } = setup();
+    const seen = vi.fn();
+    player.subscribe(seen);
+    player.play(2);
+    advance(LOAD_MS + 1000);
+    player.eject('eject');
+    expect(player.get()).toEqual({ cued: 2, hover: -1, play: null, blocked: null });
+    expect(seen).toHaveBeenLastCalledWith(expect.anything(), expect.anything(), 'eject');
+  });
+
+  it('reports a drag-out eject as its own reason', () => {
+    const { player, advance } = setup();
+    const seen = vi.fn();
+    player.subscribe(seen);
+    player.play(2);
+    advance(LOAD_MS + 1000);
+    player.eject('drag-out');
+    expect(seen).toHaveBeenLastCalledWith(expect.anything(), expect.anything(), 'drag-out');
+  });
+
+  it('ignores eject while a disc loads and when nothing plays', () => {
     const { player } = setup();
+    player.eject('eject');
+    expect(player.get().play).toBeNull();
+
     player.play(1);
+    player.eject('drag-out');
+    expect(player.get().play).toEqual({ i: 1, startedAt: 0 });
+  });
+
+  it('records the disc whose tab the browser blocked', () => {
+    const { player } = setup();
+    player.block(2);
+    expect(player.get()).toEqual({ cued: 0, hover: -1, play: null, blocked: 2 });
+  });
+
+  it('keeps a blocked tab until the next preview, drag or play', () => {
+    const { player } = setup();
+    // The blocked press left the pointer on the disc it pressed: that is not a new preview.
     player.hover(2);
-    player.cue(0);
-    player.play(2);
-    expect(player.get()).toEqual({ cued: 1, hover: 1, loading: 1 });
+    player.block(2);
+    player.hover(2);
+    expect(player.get().blocked).toBe(2);
+    // Leaving the disc is not a preview either.
+    player.hover(-1);
+    expect(player.get().blocked).toBe(2);
+    // A drag starts on a disc and previews it.
+    player.hover(3);
+    expect(player.get().blocked).toBeNull();
+
+    player.block(3);
+    player.play(1);
+    expect(player.get().blocked).toBeNull();
   });
 
-  it('navigates when the scene reports arrival, once', () => {
-    const { player, navigate, fire } = setup();
-    player.play(2);
-    expect(navigate).not.toHaveBeenCalled();
-    player.arrive();
-    fire();
-    expect(navigate).toHaveBeenCalledTimes(1);
-    expect(navigate).toHaveBeenCalledWith('https://c');
-  });
-
-  it('falls back to a timer if the scene never arrives (paused loop)', () => {
-    const { player, navigate, timers, fire } = setup();
+  it('is safe to check any number of times', () => {
+    const { player, advance } = setup();
+    const seen = vi.fn();
+    player.subscribe(seen);
     player.play(0);
-    expect(timers[0].ms).toBe(3900);
-    fire();
-    expect(navigate).toHaveBeenCalledWith('https://a');
-  });
-
-  it('navigates at once under reduced motion', () => {
-    const { player, navigate } = setup(true);
-    player.play(1);
-    expect(navigate).toHaveBeenCalledWith('https://b');
-  });
-
-  it('reset (page restored from the back/forward cache) stops the load and its timer', () => {
-    const { player, navigate, fire } = setup();
-    player.play(1);
-    player.reset();
-    fire();
-    expect(navigate).not.toHaveBeenCalled();
-    expect(player.get()).toEqual({ cued: 1, hover: -1, loading: null });
-    player.hover(2);
-    expect(player.get().hover).toBe(2);
+    advance(LOAD_MS + PLAY_MS);
+    player.check();
+    player.check();
+    player.check();
+    expect(player.get().play).toBeNull();
+    expect(seen).toHaveBeenCalledTimes(2); // the play started, the play returned
   });
 });

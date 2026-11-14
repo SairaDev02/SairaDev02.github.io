@@ -1,4 +1,4 @@
-// Accessibility of the built site: an axe-core scan in the four states the spec names, and
+// Accessibility of the built site: an axe-core scan in the five states the spec names, and
 // the keyboard skip link. The Lyrics panel's gradient is reported by axe as incomplete
 // rather than checked, so its contrast is measured by hand and recorded on ticket #31.
 import AxeBuilder from '@axe-core/playwright';
@@ -43,6 +43,21 @@ test.describe('axe scan', () => {
     expect(violations(results)).toEqual([]);
     // A zero-violation result only proves the rule found nothing if it ran at all.
     expect(ranRule(results, 'label-content-name-mismatch')).toBe(true);
+  });
+
+  test('the home page has no violations while a play runs', async ({ page }) => {
+    // The tab a play opens is not the subject: the page that plays is.
+    await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
+    await page.addInitScript(() => {
+      Object.defineProperty(window, 'open', { configurable: true, writable: true, value: () => ({ opener: null }) });
+    });
+    await page.goto('/');
+    await page.locator('[data-dock] [data-np="play"]').click();
+    // Past the load: Eject is on the faceplate and the disc is playing.
+    await page.clock.fastForward(1_600);
+    await expect(page.locator('[data-lcd-eject]')).toBeVisible();
+    const results = await new AxeBuilder({ page }).analyze();
+    expect(violations(results)).toEqual([]);
   });
 
   test('the 404 page has no violations', async ({ page }) => {

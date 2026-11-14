@@ -4,8 +4,6 @@
 import type { APIRequestContext, ConsoleMessage, Page } from '@playwright/test';
 import { expect, test } from './test';
 
-const CUED_REPO = 'https://github.com/SairaDev02/paper-lantern';
-
 /** The window the init script and the reads below share. */
 interface PolicyWindow extends Window {
   cspViolations: string[];
@@ -183,7 +181,7 @@ test.describe('nothing is blocked', () => {
     // queue button only exists once the script has read it.
     const graph = JSON.parse((await page.locator('script[type="application/ld+json"]').textContent()) ?? '');
     expect(graph['@context']).toBe('https://schema.org');
-    await page.getByRole('button', { name: 'Next in queue' }).click();
+    await page.getByRole('button', { name: 'Next: paper-lantern' }).click();
     await expect(page.getByRole('region', { name: 'Now playing' }).locator('[data-np-title]')).toHaveText('02 paper-lantern');
 
     expect(await violations(page)).toEqual([]);
@@ -218,20 +216,24 @@ test.describe('nothing is blocked', () => {
     expect(errors, 'policy console errors').toEqual([]);
   });
 
-  test('holds while a track loads and the page navigates', async ({ page }) => {
+  test('holds while a disc plays', async ({ page }) => {
     await watchPolicy(page);
+    // The tab a play opens is another document; the page that plays is the one under test.
+    await page.addInitScript(() => {
+      Object.defineProperty(window, 'open', { configurable: true, writable: true, value: () => ({ opener: null }) });
+    });
     await page.goto('/');
     const errors = policyErrors(page);
 
-    await page.locator('[data-track="1"]').click();
-    await expect(page.locator('[data-lcd-title]')).toHaveText('Loading paper-lantern');
-    // The load sequence is running, so its document is still current: read what it has
-    // recorded so far. Playwright cannot evaluate in a document once the navigation the
-    // sequence makes is in flight, so the rest is covered by the console listener.
-    expect(await violations(page), 'CSP violations from the load sequence').toEqual([]);
+    await page.locator('[data-dock] [data-np="play"]').click();
+    await expect(page.locator('[data-lcd-title]')).toHaveText('Loading tidepool');
+    await expect(page.locator('[data-dock]')).toHaveClass(/is-playing/);
+    // The play writes to the document (the waveform fill, the status, the load's animation):
+    // read what it has recorded so far, and again once the load has given way to the play.
+    expect(await violations(page), 'CSP violations from the load').toEqual([]);
 
-    await page.waitForURL(CUED_REPO);
+    await expect(page.locator('[data-lcd-title]')).toHaveText('tidepool');
+    expect(await violations(page), 'CSP violations from the play').toEqual([]);
     expect(errors, 'policy console errors').toEqual([]);
-    expect(await page.title()).toBe('GitHub stub');
   });
 });

@@ -1,7 +1,7 @@
 ---
 // Track list: one row per repository with its number (a play icon on hover, equaliser
 // bars while active), title and description, language, commit waveform, commits and last
-// push. Rows are real links; scripts/home.ts turns a plain click into loading the disc.
+// push. Rows are real links; scripts/home.ts opens a plain click's tab and plays the disc.
 import type { Repo } from '../lib/github';
 import { dotDate, languageOf, trackNo } from '../lib/format';
 import Wave from './Wave.astro';
@@ -123,5 +123,27 @@ const max = Math.max(1, ...repos.flatMap((r) => r.wave));
   .list .row:hover { background: rgb(255 255 255 / 0.55); }
   .list .row:global(.on) { background: var(--sun); color: var(--on-sun); }
   .list .row:global(.on) * { color: var(--on-sun); }
+  /* The cued row, the one the Dock's Play plays: a steady light blue glow box replacing the
+     old left bar. Idle, it also carries a faint blue fill; the playing row keeps its solid
+     yellow. */
+  .list .row:global(.cued) {
+    box-shadow: 0 0 0 1px var(--cue), 0 0 22px 4px color-mix(in srgb, var(--cue) 55%, transparent);
+  }
+  .list .row:global(.cued:not(.on)) { background: color-mix(in srgb, var(--cue) 18%, transparent); }
+  /* A preview (a pointer over the row or focus on it) is a soft, blurred yellow wash behind
+     the row, not a fill: the fill belongs to the play. */
+  .list .row { position: relative; isolation: isolate; }
+  .list .row:global(.hov) { background: transparent; }
+  .list .row:global(.hov)::before {
+    content: '';
+    position: absolute;
+    inset: 4px 8px;
+    z-index: -1;
+    border-radius: 14px;
+    background: var(--sun);
+    opacity: 0.6;
+    filter: blur(12px);
+    pointer-events: none;
+  }
   .row:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 </style>

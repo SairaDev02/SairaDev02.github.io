@@ -35,6 +35,8 @@ const ogImage = await getImage({ src: ogCard, format: 'png' });
   <div class="page">
     <div class="sky" aria-hidden="true"></div>
     <a class="skip" href="#repositories">Skip to repositories</a>
+    <!-- The page's one live region: committed changes only (see scripts/home.ts). -->
+    <div class="visually-hidden" role="status" data-status></div>
     <SiteHeader lastPush={lastPush} />
     <main>
       <CdPlayer count={repos.length} />
@@ -58,8 +60,8 @@ const ogImage = await getImage({ src: ogCard, format: 'png' });
     position: relative;
     min-height: 100vh;
     overflow: hidden;
-    /* Room for the fixed now-playing dock. */
-    padding-bottom: var(--dock-h);
+    /* Room for the fixed now-playing dock: its bar plus any open panel. */
+    padding-bottom: var(--dock-space, var(--dock-h));
     isolation: isolate;
   }
   /* The first focus stop: out of sight until focused, then a pill over the header. It
