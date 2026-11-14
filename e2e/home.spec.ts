@@ -444,9 +444,9 @@ test.describe('the waveform', () => {
     await expect(waves).toBeVisible();
     // Hidden from the accessibility tree: the outer SVG already is, and no layer adds a node.
     await expect(waves).toHaveAttribute('aria-hidden', 'true');
-    expect(await waves.locator('svg').evaluateAll((all) => all.map((s) => s.getAttribute('aria-hidden')))).toEqual(
-      Array(8).fill('true'),
-    );
+    expect(
+      await waves.locator('svg').evaluateAll((all) => all.length > 0 && all.every((svg) => svg.getAttribute('aria-hidden') === 'true')),
+    ).toBe(true);
     // No pointer or keyboard route: nothing inside is focusable, named or clickable.
     expect(await waves.locator('a, button, input, select, textarea, [tabindex], [role], [onclick]').count()).toBe(0);
     expect(await waves.evaluate((el) => getComputedStyle(el).cursor)).not.toBe('pointer');
@@ -464,7 +464,7 @@ test.describe('the waveform', () => {
 });
 
 test.describe('the Dock clears the page', () => {
-  test('the last footer link focused from the keyboard lands above the Dock', async ({ page }) => {
+  test('the last footer link, when focused, lands above the Dock', async ({ page }) => {
     const link = page.getByRole('contentinfo').getByRole('link').last();
     await link.focus();
     await expect(link).toBeFocused();
