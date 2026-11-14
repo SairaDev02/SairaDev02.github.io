@@ -35,6 +35,8 @@ const ogImage = await getImage({ src: ogCard, format: 'png' });
   <div class="page">
     <div class="sky" aria-hidden="true"></div>
     <a class="skip" href="#repositories">Skip to repositories</a>
+    <!-- The page's one live region: committed changes only (see scripts/home.ts). -->
+    <div class="visually-hidden" role="status" data-status></div>
     <SiteHeader lastPush={lastPush} />
     <main>
       <CdPlayer count={repos.length} />

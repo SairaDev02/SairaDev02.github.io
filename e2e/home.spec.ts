@@ -182,32 +182,41 @@ test.describe('queue panel', () => {
 });
 
 test.describe('playing a track', () => {
-  test('a track list click runs the load sequence, then opens the repository', async ({ page }) => {
+  test('a track list click opens the repository in a new tab and plays its disc', async ({ page, context }) => {
+    const popup = context.waitForEvent('page');
     await page.locator('[data-track="1"]').click();
+    await (await popup).waitForURL('https://github.com/SairaDev02/paper-lantern');
+
+    // The site stays on screen and plays the disc.
+    expect(new URL(page.url()).pathname).toBe('/');
     await expect(dock(page).locator('[data-np-kicker]')).toHaveText('Now playing');
     await expect(page.locator('[data-dock]')).toHaveClass(/is-playing/);
     await expect(page.locator('[data-lcd-title]')).toHaveText('Loading paper-lantern');
-    await page.waitForURL('https://github.com/SairaDev02/paper-lantern');
   });
 
-  test('the playlist play button opens the cued repository', async ({ page }) => {
+  test('the playlist play button opens the cued repository in a new tab', async ({ page, context }) => {
     await page.getByRole('button', { name: 'Next in queue' }).click();
+    const popup = context.waitForEvent('page');
     await page.getByRole('button', { name: 'Play the cued repository: opens it' }).click();
-    await page.waitForURL('https://github.com/SairaDev02/paper-lantern');
+    await (await popup).waitForURL('https://github.com/SairaDev02/paper-lantern');
+    await expect(dock(page).locator('[data-np-kicker]')).toHaveText('Now playing');
   });
 
-  test('with reduced motion, opens the repository without the load sequence', async ({ page }) => {
+  test('with reduced motion, a play still opens the repository', async ({ page, context }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
+    const popup = context.waitForEvent('page');
     await page.locator('[data-track="2"]').click();
-    await page.waitForURL('https://github.com/SairaDev02/quiet-notes', { timeout: 1500 });
+    await (await popup).waitForURL('https://github.com/SairaDev02/quiet-notes');
+    // The play still counts: the load gives way to the play on the clock.
+    await expect(page.locator('[data-lcd-title]')).toHaveText('quiet-notes');
   });
 
-  test('a modified click opens the repository in a new tab and leaves the page alone', async ({ page, context, isMobile }) => {
+  test('a modified click opens the repository in a new tab and still plays the disc', async ({ page, context, isMobile }) => {
     test.skip(isMobile, 'no modifier keys on phones');
     const popup = context.waitForEvent('page');
     await page.locator('[data-track="0"]').click({ modifiers: ['ControlOrMeta'] });
     await (await popup).waitForURL('https://github.com/SairaDev02/tidepool');
-    await expect(dock(page).locator('[data-np-kicker]')).toHaveText('Up next');
+    await expect(dock(page).locator('[data-np-kicker]')).toHaveText('Now playing');
     expect(new URL(page.url()).hostname).toBe('127.0.0.1');
   });
 });

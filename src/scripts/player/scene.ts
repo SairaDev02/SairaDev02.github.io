@@ -3,8 +3,9 @@
 // blue levels; light sources (the pointer star, display digits, LED, sparkles) are
 // emissive and drawn in the two yellow light colours.
 //
-// The scene owns disc positions and the drag gesture. What is hovered or loading comes
-// from the player state each frame; the scene only reports when a load has arrived.
+// The scene owns disc positions and the drag gesture. What is previewed or playing comes
+// from the player state each frame; a play's pose comes from its wall clock, so a hidden
+// tab that stops the loop resumes at the right moment.
 import type { PlayerSnapshot } from '../player-state';
 import { quantizeEmissive, type Palette } from '../render/dither';
 import { HeightField, sparkle } from '../render/heightfield';
@@ -67,7 +68,7 @@ export class CdScene {
   private readonly light: PointerLight;
   private readonly body: Uint8Array;
   private readonly base: { H: Float32Array; AL: Float32Array; AO: Float32Array; SP: Float32Array };
-  private load: { i: number; t0: number; fx: number; fy: number; fz: number } | null = null;
+  private load: { i: number; startedAt: number; fx: number; fy: number; fz: number } | null = null;
   private t0 = -1;
   private last = 0;
 
@@ -187,26 +188,31 @@ export class CdScene {
    * frame on a slow device. Run it to the end before showing `image` or starting another
    * frame. `still` (reduced motion, or the still frames shown before the first input)
    * skips easing and the fade-in.
-   * Returns true once a running load reaches the moment to navigate.
    */
-  *frame(t: number, s: PlayerSnapshot, still: boolean): Generator<void, boolean> {
+  *frame(t: number, s: PlayerSnapshot, still: boolean): Generator<void, void> {
     const { W, H, tray, display: dsp, led } = this.g;
     const { field, Em, discs, drag } = this;
     if (this.t0 < 0) this.t0 = still ? -1e9 : t;
-    const dt = Math.min(0.1, this.last ? t - this.last : 0);
+    const gap = this.last ? t - this.last : 0;
+    const dt = Math.min(0.1, gap);
     this.last = t;
 
-    // Follow the player state into and out of a load.
-    if (s.loading !== null && this.load?.i !== s.loading) {
-      const d = discs[s.loading];
+    // Follow the player state in and out of a play, by the play's own wall clock: a new
+    // play (or a swap) enters here, and an ended one leaves its disc to glide home.
+    if (this.load && (this.load.i !== s.play?.i || this.load.startedAt !== s.play?.startedAt)) this.load = null;
+    if (s.play && !this.load) {
+      const d = discs[s.play.i];
       this.drag = null;
-      this.load = { i: s.loading, t0: t, fx: d.x, fy: d.y, fz: d.z };
-    } else if (s.loading === null && this.load) {
-      this.load = null; // restored from the back/forward cache: everything back home
-      for (const d of discs) Object.assign(d, { sx: d.ox, sy: d.oy, x: d.ox, y: d.oy, z: 0 });
+      this.load = { i: s.play.i, startedAt: s.play.startedAt, fx: d.x, fy: d.y, fz: d.z };
     }
+    // Back from a hidden tab or an off-screen pause: resting discs are already home.
+    if (gap > 1)
+      discs.forEach((d, i) => {
+        if (i === this.load?.i) Object.assign(d, { x: tray.x, y: tray.y });
+        else if (this.drag?.i !== i) Object.assign(d, { x: d.sx, y: d.sy, z: 0 });
+      });
     const load = this.load;
-    const e = load ? t - load.t0 : -1;
+    const e = load ? (Date.now() - load.startedAt) / 1000 : -1;
 
     field.H.set(this.base.H);
     field.AL.set(this.base.AL);
@@ -218,19 +224,19 @@ export class CdScene {
 
     const k = (v: number) => (still ? 1 : v);
     discs.forEach((d, i) => {
-      if (load?.i === i) this.poseLoading(d, load, e, dt);
+      if (load?.i === i) this.poseLoading(d, load, still ? Math.max(e, LOAD.drop) : e, dt, still);
       else if (drag?.i === i) d.z += ((drag.moved ? CARRY_Z : HOVER_Z) - d.z) * k(0.35);
       else {
         // Glide to the resting place; lift while hovered.
         d.x += (d.sx - d.x) * k(0.2);
         d.y += (d.sy - d.y) * k(0.2);
-        d.z += ((i === s.hover && !load ? HOVER_Z : 0) - d.z) * k(0.3);
+        d.z += ((i === s.hover ? HOVER_Z : 0) - d.z) * k(0.3);
       }
     });
-    // Resting discs first; the carried or dragged one last so it lies on top.
-    const top = load?.i ?? drag?.i ?? -1;
-    discs.forEach((d, i) => i !== top && this.drawDisc(d, i === s.hover));
-    if (top >= 0) this.drawDisc(discs[top], true);
+    // Resting discs first; the playing disc, then a dragged one, on top.
+    const top = [load?.i ?? -1, drag?.i ?? -1].filter((i, k, a) => i >= 0 && a.indexOf(i) === k);
+    discs.forEach((d, i) => !top.includes(i) && this.drawDisc(d, i === s.hover));
+    for (const i of top) this.drawDisc(discs[i], true);
 
     yield;
     field.finalize();
@@ -257,7 +263,7 @@ export class CdScene {
       }
     // Power LED: steady when idle, blinking while a disc plays.
     if (!playing || Math.sin(t * 14) > 0) sparkle(Em, W, H, led[0], led[1], 0.22);
-    if (s.hover >= 0 && !load && !drag?.moved) {
+    if (s.hover >= 0 && s.hover !== load?.i && !drag?.moved) {
       const d = discs[s.hover];
       sparkle(Em, W, H, d.x + this.r * 0.6, d.y - this.r * 0.6, 0.45 + 0.08 * Math.sin(t * 4));
     }
@@ -272,10 +278,9 @@ export class CdScene {
       }
     }
     quantizeEmissive(field.L, Em, this.out, this.colours.scene, this.colours.light, W);
-    return load !== null && e >= LOAD.go;
   }
 
-  private poseLoading(d: Disc, load: { fx: number; fy: number; fz: number }, e: number, dt: number) {
+  private poseLoading(d: Disc, load: { fx: number; fy: number; fz: number }, e: number, dt: number, still: boolean) {
     const { tray } = this.g;
     const { fx, fy, fz } = load;
     if (e < LOAD.lift) d.z = fz + (CARRY_Z - fz) * ease(e / LOAD.lift);
@@ -290,8 +295,11 @@ export class CdScene {
       const k = (e - LOAD.travel) / (LOAD.drop - LOAD.travel);
       d.z = CARRY_Z + (WELL_Z - CARRY_Z) * k * k;
     } else {
+      // Settle into the tray (also after a drag that came back in), then spin.
+      d.x += (tray.x - d.x) * (still ? 1 : 0.3);
+      d.y += (tray.y - d.y) * (still ? 1 : 0.3);
       d.z = WELL_Z;
-      d.rot += dt * 16 * clamp01((e - LOAD.drop) / (LOAD.spin - LOAD.drop));
+      if (!still) d.rot += dt * 16 * clamp01((e - LOAD.drop) / (LOAD.spin - LOAD.drop));
     }
   }
 

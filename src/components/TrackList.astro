@@ -1,7 +1,7 @@
 ---
 // Track list: one row per repository with its number (a play icon on hover, equaliser
 // bars while active), title and description, language, commit waveform, commits and last
-// push. Rows are real links; scripts/home.ts turns a plain click into loading the disc.
+// push. Rows are real links; scripts/home.ts opens a plain click's tab and plays the disc.
 import type { Repo } from '../lib/github';
 import { dotDate, languageOf, trackNo } from '../lib/format';
 import Wave from './Wave.astro';

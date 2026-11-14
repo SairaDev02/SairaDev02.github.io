@@ -1,7 +1,7 @@
 // The fixed now-playing dock (NowPlaying.astro): the cued track, transport controls, a
 // commit-waveform scrubber, and two panels above the bar: Lyrics (the README as lines,
 // highlighted one by one) and Queue (play order, reorderable by drag or buttons).
-// The queue order and the open panel are the dock's own state; what is cued or loading
+// The queue order and the open panel are the dock's own state; what is cued or playing
 // belongs to the player state.
 import { dotDate, languageOf, plural, trackNo, type Track } from '../../lib/format';
 import type { PlayerState } from '../player-state';
@@ -12,7 +12,7 @@ import { naturalOrder, reorder, shuffleAround, stepFrom, upNext } from './queue'
 const LINE_MS = 2600; // pace of the lyric highlight
 type Panel = 'lyrics' | 'queue';
 
-export function mountDock(dock: HTMLElement, tracks: readonly Track[], player: PlayerState) {
+export function mountDock(dock: HTMLElement, tracks: readonly Track[], player: PlayerState, openAndPlay: (i: number) => void) {
   const $ = <T extends HTMLElement = HTMLElement>(sel: string) => dock.querySelector<T>(sel)!;
   const n = tracks.length;
   const waves = [...dock.querySelectorAll<HTMLElement>('[data-wave]')];
@@ -20,7 +20,7 @@ export function mountDock(dock: HTMLElement, tracks: readonly Track[], player: P
   let shuffled = false;
   let open: Panel | null = null;
   const cued = () => player.get().cued;
-  const busy = () => player.get().loading !== null;
+  const busy = () => player.isLoading();
 
   // ---------- bar ----------
   const show = (i: number) => {
@@ -42,16 +42,16 @@ export function mountDock(dock: HTMLElement, tracks: readonly Track[], player: P
       fill.style.clipPath = '';
     }
     if (i === null) return;
-    // The played part of the waveform fills in step with the load sequence.
+    // The played part of the waveform fills in step with the load.
     const fill = waves[i].querySelector<HTMLElement>('[data-wave-fill]')!;
     requestAnimationFrame(() => {
-      fill.style.transition = `clip-path ${LOAD.go * 1000}ms linear`;
+      fill.style.transition = `clip-path ${LOAD.drop * 1000}ms linear`;
       fill.style.clipPath = 'inset(0 0 0 0)';
     });
   };
   player.subscribe((s, before) => {
     if (s.cued !== before.cued) show(s.cued);
-    if (s.loading !== before.loading) setPlaying(s.loading);
+    if (s.play !== before.play) setPlaying(s.play?.i ?? null);
   });
 
   const setShuffle = (on: boolean) => {
@@ -67,14 +67,14 @@ export function mountDock(dock: HTMLElement, tracks: readonly Track[], player: P
       if (busy()) return;
       switch (b.dataset.np) {
         case 'play':
-          player.play(cued());
+          openAndPlay(cued());
           break;
         case 'shuffle':
           setShuffle(!shuffled);
           break;
         case 'shuffle-play':
           setShuffle(true);
-          player.play(queue[1 % n]); // the first track after the cued one
+          openAndPlay(queue[1 % n]); // the first track after the cued one
           break;
         case 'prev':
         case 'next':
@@ -211,4 +211,5 @@ export function mountDock(dock: HTMLElement, tracks: readonly Track[], player: P
   });
 
   show(cued());
+  return { nextAfter: (i: number) => stepFrom(queue, i, 1) };
 }
