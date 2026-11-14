@@ -1,6 +1,6 @@
 ---
-// Fixed now-playing dock: cued track, transport, commit-waveform scrubber, and the Lyrics
-// and Queue panels that open above the bar. Behaviour lives in scripts/dock/dock.ts.
+// Fixed now-playing dock: cued track, transport, a commit-waveform progress fill, and the
+// Lyrics and Queue panels that open above the bar. Behaviour lives in scripts/dock/dock.ts.
 import type { Repo } from '../lib/github';
 import Wave from './Wave.astro';
 
@@ -23,10 +23,17 @@ const { repos } = Astro.props;
     <header class="panel-head">
       <span class="panel-title">Queue</span>
       <span class="small-label">Drag ⠿ or use ↑ ↓ to reorder</span>
+      <!-- Under 600 px the bar has no room for Shuffle, so the panel's header carries it. -->
+      <button type="button" class="q-shuffle" data-np="shuffle" aria-pressed="false" aria-label="Shuffle the queue">
+        <svg viewBox="0 0 24 24" aria-hidden="true"
+          ><path d="M3 7h4l10 10h4M3 17h4l3-3M14 10l3-3h4M18 4l3 3-3 3M18 14l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.8"
+          ></path></svg
+        >
+      </button>
     </header>
-    <p class="small-label q-label">Now playing</p>
+    <p class="small-label q-label" data-q-kicker>Ready to play</p>
     <ol class="q-list" data-q-now></ol>
-    <p class="small-label q-label">Next up</p>
+    <p class="small-label q-label">Next in queue</p>
     <ol class="q-list" data-q-next></ol>
     <template data-q-item>
       <li class="q-item">
@@ -45,7 +52,7 @@ const { repos } = Astro.props;
     <div class="track">
       <span class="disc" aria-hidden="true"></span>
       <div class="meta">
-        <span class="small-label" data-np-kicker>Up next</span>
+        <span class="small-label" data-np-kicker>Ready to play</span>
         <b class="title" data-np-title></b>
         <span class="sub" data-np-sub></span>
       </div>
@@ -64,8 +71,11 @@ const { repos } = Astro.props;
             ><path d="M6 5v14M19 5 8 12l11 7z" fill="currentColor" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path></svg
           >
         </button>
-        <button type="button" data-np="play" class="play" aria-label="Play: open the cued repository">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"></path></svg>
+        <button type="button" data-np="play" class="play" aria-label="Play the cued repository, opens in a new tab">
+          <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"></path></svg>
+          <svg class="i-reopen" viewBox="0 0 24 24" aria-hidden="true"
+            ><path d="M7 17 17 7M9 7h8v8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg
+          >
         </button>
         <button type="button" data-np="next" aria-label="Next track">
           <svg viewBox="0 0 24 24" aria-hidden="true"
@@ -75,7 +85,8 @@ const { repos } = Astro.props;
       </div>
       <div class="scrub">
         <span class="t" data-np-first></span>
-        <div class="waves">
+        <!-- A progress fill, not a scrubber: nothing here is focusable, named or clickable. -->
+        <div class="waves" aria-hidden="true">
           {
             repos.map((r, i) => (
               <div class="wave" data-wave hidden={i !== 0}>
@@ -198,6 +209,10 @@ const { repos } = Astro.props;
     box-shadow: 0 0 0 1px var(--accent), 0 0 18px rgb(255 214 10 / 0.6);
   }
   .ctrl .play:hover { color: var(--on-sun); transform: scale(1.06); }
+  /* A running play turns Play into Reopen: the tab is already open. */
+  .play .i-reopen { display: none; }
+  .dock:global(.is-playing) .ctrl .play .i-play { display: none; }
+  .dock:global(.is-playing) .ctrl .play .i-reopen { display: block; }
   @media (max-width: 599px) {
     .ctrl { gap: 2px; }
     .ctrl .shuffle { display: none; }
@@ -212,7 +227,7 @@ const { repos } = Astro.props;
   .waves { position: relative; flex: 1; min-width: 0; }
   .wave { position: relative; }
   .wave :global(.base) { color: var(--line); }
-  .fill { position: absolute; inset: 0; clip-path: inset(0 100% 0 0); }
+  .fill { position: absolute; inset: 0; clip-path: inset(0 100% 0 0); transition: clip-path 0.25s linear; }
   .fill :global(.played) { color: var(--accent); }
 
   .right { display: flex; align-items: center; justify-content: flex-end; gap: 16px; }
@@ -273,6 +288,25 @@ const { repos } = Astro.props;
   }
   .queue .panel-title { color: var(--accent); }
   .q-label { margin: 10px 0 4px; }
+  /* Shuffle lives here on phones, where the bar's controls keep their five buttons. */
+  .q-shuffle {
+    all: unset;
+    display: none;
+    align-self: center;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    cursor: pointer;
+    color: var(--accent);
+  }
+  .q-shuffle svg { width: 18px; height: 18px; }
+  .q-shuffle:hover { background: rgb(29 63 208 / 0.1); }
+  .q-shuffle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .q-shuffle[aria-pressed='true'] { background: var(--sun); color: var(--on-sun); }
+  @media (max-width: 599px) {
+    .q-shuffle { display: grid; }
+  }
   .q-list { list-style: none; margin: 0; padding: 0; }
   .q-item {
     display: grid;

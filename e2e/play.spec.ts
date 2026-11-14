@@ -7,7 +7,9 @@ import { picture, waitForScene } from './picture';
 import { expect, test } from './test';
 
 const REPO = 'https://github.com/SairaDev02/';
-const playButton = (page: Page) => page.getByRole('button', { name: 'Play: open the cued repository' });
+/** The Dock's Play button: the playlist header has one with the same name. */
+const playButton = (page: Page) => page.locator('[data-dock] [data-np="play"]');
+const kicker = (page: Page) => page.locator('[data-dock] [data-np-kicker]');
 const status = (page: Page) => page.getByRole('status');
 
 test.describe('opening a repository', () => {
@@ -81,9 +83,24 @@ test.describe('a play on the clock', () => {
     await page.clock.fastForward(30_100);
     // A return ends the play and moves the cue on along the Queue.
     await expect(page.locator('[data-dock]')).not.toHaveClass(/is-playing/);
-    await expect(page.locator('[data-np-kicker]')).toHaveText('Up next');
+    await expect(kicker(page)).toHaveText('Ready to play');
     await expect(page.locator('[data-np-title]')).toHaveText('02 paper-lantern');
     await expect(page.locator('[data-lcd-title]')).toHaveText('Pick a disc');
+  });
+
+  test('the label above the title is ready, then loading, then playing', async ({ page }) => {
+    await expect(kicker(page)).toHaveText('Ready to play');
+    await playButton(page).click();
+    await expect(kicker(page)).toHaveText('Loading · opened in a new tab');
+    // The Queue panel's top section uses the same label.
+    await page.getByRole('button', { name: 'Queue', exact: true }).click();
+    const panel = page.getByRole('region', { name: 'Queue', exact: true });
+    await expect(panel.locator('[data-q-kicker]')).toHaveText('Loading · opened in a new tab');
+
+    // The load gives way to the play on the clock, not on an animation's end.
+    await page.clock.fastForward(1_400);
+    await expect(kicker(page)).toHaveText('Now playing');
+    await expect(panel.locator('[data-q-kicker]')).toHaveText('Now playing');
   });
 
   test('a return follows the Queue order the panel set', async ({ page }) => {
@@ -163,6 +180,65 @@ test.describe('a play on the clock', () => {
     await page.clock.fastForward(5_000);
     await expect(page.locator('[data-lcd-num]')).toHaveText('0:05');
     await expect(page.locator('[data-lcd-title]')).toHaveText('tidepool');
+  });
+
+  test('the waveform fills over the play, from the clock', async ({ page, isMobile }) => {
+    test.skip(isMobile, 'the waveform shows from 900 px up');
+    await page.clock.pauseAt(new Date('2026-01-01T00:00:02Z'));
+    const play = playButton(page);
+    await play.click();
+    const fill = page.locator('[data-wave]:not([hidden]) [data-wave-fill]');
+    /** How much of the waveform is still clipped off its right edge, in percent. */
+    const clipped = () => fill.evaluate((el) => parseFloat(el.style.clipPath.split(' ')[1]));
+    // Nothing is coloured until the disc lands.
+    await expect(fill).toHaveCSS('clip-path', 'inset(0px 100% 0px 0px)');
+
+    await page.clock.fastForward(1_400 + 15_000);
+    // Half of the 30 s: half the waveform is coloured, so half is clipped away.
+    expect(await clipped()).toBeCloseTo(50, 0);
+
+    // A return resets it.
+    await page.clock.fastForward(30_100);
+    await expect(page.locator('[data-dock]')).not.toHaveClass(/is-playing/);
+    expect(await clipped()).toBe(100);
+  });
+});
+
+test.describe('reopening the playing repository', () => {
+  test.beforeEach(async ({ page }) => {
+    // A frozen clock, so the time on the faceplate is exactly where a test leaves it.
+    await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
+    await page.goto('/');
+    await page.clock.pauseAt(new Date('2026-01-01T00:00:10Z'));
+  });
+
+  test('Play becomes Reopen, and pressing it opens the tab again without restarting the play', async ({ page, context }) => {
+    const play = playButton(page);
+    await expect(play).toHaveAccessibleName('Play tidepool, opens in a new tab');
+    const first = context.waitForEvent('page');
+    await play.click();
+    await (await first).waitForURL(`${REPO}tidepool`);
+
+    // The glyph and the name say the tab is already open.
+    await expect(play).toHaveAccessibleName('Reopen tidepool in a new tab');
+    await expect(play.locator('.i-reopen')).toBeVisible();
+    await expect(play.locator('.i-play')).toBeHidden();
+    // The playlist header's Play is the same control, and says the same words.
+    await expect(
+      page.getByRole('region', { name: 'Repositories' }).getByRole('button', { name: 'Reopen tidepool in a new tab' }),
+    ).toBeVisible();
+
+    await page.clock.fastForward(1_400 + 5_000);
+    await expect(page.locator('[data-lcd-num]')).toHaveText('0:05');
+
+    const again = context.waitForEvent('page');
+    await play.click();
+    await (await again).waitForURL(`${REPO}tidepool`);
+    await expect(status(page)).toHaveText('Reopened tidepool in a new tab');
+    // The 30 s kept counting: the faceplate is where it was, not back at the start.
+    await expect(page.locator('[data-lcd-num]')).toHaveText('0:05');
+    await page.clock.fastForward(10_000);
+    await expect(page.locator('[data-lcd-num]')).toHaveText('0:15');
   });
 });
 

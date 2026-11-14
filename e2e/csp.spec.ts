@@ -225,7 +225,7 @@ test.describe('nothing is blocked', () => {
     await page.goto('/');
     const errors = policyErrors(page);
 
-    await page.getByRole('button', { name: 'Play: open the cued repository' }).click();
+    await page.locator('[data-dock] [data-np="play"]').click();
     await expect(page.locator('[data-lcd-title]')).toHaveText('Loading tidepool');
     await expect(page.locator('[data-dock]')).toHaveClass(/is-playing/);
     // The play writes to the document (the waveform fill, the status, the load's animation):
