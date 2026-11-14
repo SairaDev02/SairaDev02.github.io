@@ -38,12 +38,19 @@ rows.forEach((a) => {
   a.addEventListener('focus', () => player.hover(i));
   a.addEventListener('pointerleave', () => player.hover(-1));
   a.addEventListener('blur', () => player.hover(-1));
-  const open = (e: MouseEvent) => {
+  // A plain click opens the tab the same way as every other route (window.open in the
+  // handler); modified and middle clicks keep the browser's own link behaviour.
+  a.addEventListener('click', (e) => {
+    const plain = e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey;
+    if (plain || player.isLoading() || !openTabs) e.preventDefault();
+    if (plain) openAndPlay(i);
+    else if (!player.isLoading()) player.play(i);
+  });
+  a.addEventListener('auxclick', (e) => {
+    if (e.button !== 1) return;
     if (player.isLoading() || !openTabs) e.preventDefault();
     if (!player.isLoading()) player.play(i);
-  };
-  a.addEventListener('click', open);
-  a.addEventListener('auxclick', (e) => e.button === 1 && open(e));
+  });
 });
 const markRows = () => {
   const s = player.get();
