@@ -1,5 +1,6 @@
-// Mounts the CD player picture: pointer gestures on the canvas (hover, click, drag and
-// drop), the render loop, the LCD, and the switch between the wide and portrait grids.
+// Mounts the CD player picture: pointer gestures on the canvas (hover, click, drag, drop,
+// Escape, and dragging the playing disc out to eject it), the render loop, the LCD with its
+// Eject button, and the switch between the wide and portrait grids.
 import type { Track } from '../../lib/format';
 import type { PlayerState } from '../player-state';
 import { frameLoop, readColours, reducedMotion, trackDevicePixelRatio, yieldToMain } from '../render/canvas';
@@ -14,7 +15,13 @@ const DRAG_PX = 4;
 export async function mountCdPlayer(root: HTMLElement, tracks: readonly Track[], player: PlayerState, openAndPlay: (i: number) => void) {
   // `root` is the stage: its content width decides the canvas scale (in CSS).
   const canvas = root.querySelector<HTMLCanvasElement>('canvas')!;
-  const showLcd = mountLcd(root.querySelector<HTMLElement>('[data-lcd]')!);
+  const showLcd = mountLcd(
+    root.querySelector<HTMLElement>('[data-lcd]')!,
+    () => player.eject('eject'),
+    // The Eject button leaves with the play it ends: the visitor keeps their place at the
+    // Dock's Play rather than losing focus to the page.
+    () => document.querySelector<HTMLElement>('[data-dock] [data-np="play"]')?.focus(),
+  );
   const ctx = canvas.getContext('2d')!;
   const colours = {
     scene: readColours(root, ['--shade-0', '--shade-1', '--shade-2', '--shade-3']),
@@ -113,13 +120,29 @@ export async function mountCdPlayer(root: HTMLElement, tracks: readonly Track[],
     const i = scene.drag.i;
     press = null;
     if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
-    if (scene.endDrag(cancelled) === 'load') openAndPlay(i);
+    // The tray's own disc being dragged out is an Eject; any other disc is on its way in.
+    const playing = player.get().play?.i === i;
+    const r = scene.endDrag(cancelled, playing);
+    if (r === 'load' && !playing) openAndPlay(i);
+    if (r === 'drop' && playing) player.eject('drag-out');
     updateLcd();
     setCursor();
     redraw();
   };
   canvas.addEventListener('pointerup', (e) => end(e, false));
   canvas.addEventListener('pointercancel', (e) => end(e, true));
+  // Escape cancels any drag: the disc goes back and nothing plays.
+  addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || !scene?.drag || !press) return;
+    const id = press.id;
+    const playing = player.get().play?.i === scene.drag.i;
+    press = null;
+    if (canvas.hasPointerCapture(id)) canvas.releasePointerCapture(id);
+    scene.endDrag(true, playing);
+    updateLcd();
+    setCursor();
+    redraw();
+  });
   // Touch: a press on a disc must drag it, not scroll the page. Elsewhere the canvas
   // keeps scrolling vertically (touch-action: pan-y).
   canvas.addEventListener(

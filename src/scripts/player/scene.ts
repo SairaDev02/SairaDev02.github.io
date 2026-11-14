@@ -69,6 +69,8 @@ export class CdScene {
   private readonly body: Uint8Array;
   private readonly base: { H: Float32Array; AL: Float32Array; AO: Float32Array; SP: Float32Array };
   private load: { i: number; startedAt: number; fx: number; fy: number; fz: number } | null = null;
+  /** The disc a drag-out ejected, left where it was dropped once its play ends. */
+  private kept = -1;
   private t0 = -1;
   private last = 0;
 
@@ -161,14 +163,24 @@ export class CdScene {
   }
 
   /**
-   * Ends the drag. A click or a drop into the tray asks to load the disc. A drop in the
-   * sky leaves it there; a drop on the player body, or a cancelled gesture, sends it back.
+   * Ends the drag. A click or a drop into the tray asks to load the disc. Dropped in the
+   * sky it stays there; dropped on the player body, or cancelled, it goes back. `playing`
+   * is the disc the tray holds: dragging it out ejects it, so anywhere but the tray itself
+   * leaves it behind.
    */
-  endDrag(cancelled: boolean): 'load' | 'drop' {
+  endDrag(cancelled: boolean, playing = false): 'load' | 'drop' | 'cancel' {
     const drag = this.drag;
     this.drag = null;
-    if (!drag) return 'drop';
+    if (!drag) return 'cancel';
     const d = this.discs[drag.i];
+    if (playing) {
+      // Back in the tray keeps playing, and so does Escape; the body sends it to its slot;
+      // the sky keeps it where it landed until the page reloads.
+      if (cancelled || this.inTray(d)) return 'cancel';
+      [d.sx, d.sy] = this.onBody(d) ? [d.ox, d.oy] : [d.x, d.y];
+      this.kept = drag.i;
+      return 'drop';
+    }
     if (cancelled) {
       d.sx = d.ox;
       d.sy = d.oy;
@@ -198,8 +210,14 @@ export class CdScene {
     this.last = t;
 
     // Follow the player state in and out of a play, by the play's own wall clock: a new
-    // play (or a swap) enters here, and an ended one leaves its disc to glide home.
-    if (this.load && (this.load.i !== s.play?.i || this.load.startedAt !== s.play?.startedAt)) this.load = null;
+    // play (or a swap) enters here, and an ended one sends its disc back to its slot —
+    // unless a drag-out left it somewhere in the sky.
+    if (this.load && (this.load.i !== s.play?.i || this.load.startedAt !== s.play?.startedAt)) {
+      const d = discs[this.load.i];
+      if (this.kept !== this.load.i) [d.sx, d.sy] = [d.ox, d.oy];
+      this.kept = -1;
+      this.load = null;
+    }
     if (s.play && !this.load) {
       const d = discs[s.play.i];
       this.drag = null;
@@ -224,8 +242,9 @@ export class CdScene {
 
     const k = (v: number) => (still ? 1 : v);
     discs.forEach((d, i) => {
-      if (load?.i === i) this.poseLoading(d, load, still ? Math.max(e, LOAD.drop) : e, dt, still);
-      else if (drag?.i === i) d.z += ((drag.moved ? CARRY_Z : HOVER_Z) - d.z) * k(0.35);
+      // A carried disc follows the pointer, the tray's own included: that is a drag-out.
+      if (drag?.i === i) d.z += ((drag.moved ? CARRY_Z : HOVER_Z) - d.z) * k(0.35);
+      else if (load?.i === i) this.poseLoading(d, load, still ? Math.max(e, LOAD.drop) : e, dt, still);
       else {
         // Glide to the resting place; lift while hovered.
         d.x += (d.sx - d.x) * k(0.2);

@@ -2,7 +2,7 @@
 // The CD player's LCD faceplate, built into the bottom of the picture frame. Its height
 // is fixed, so long descriptions scroll as a marquee instead of reflowing the page. Real
 // DOM text keeps it legible and readable by screen readers. Driven by player/lcd.ts.
-import { IDLE_INFO, IDLE_TITLE } from '../scripts/player/lcd';
+import { countLabel, IDLE_INFO, IDLE_TITLE } from '../scripts/player/lcd';
 
 interface Props {
   total: number;
@@ -11,20 +11,24 @@ const { total } = Astro.props;
 ---
 
 <div class="lcd" data-lcd data-flag="drag">
+  <!-- The counter repeats the picture's own display, which is decoration: not announced. -->
   <div class="counter" aria-hidden="true">
     <span class="ghost">88</span>
     <span class="num" data-lcd-num>--</span>
-    <span class="of">/{String(total).padStart(2, '0')}</span>
+    <span class="of" data-lcd-of>{countLabel(total)}</span>
   </div>
-  <div class="main" aria-live="polite" aria-atomic="true">
+  <div class="main">
     <div class="title" data-lcd-title>{IDLE_TITLE}</div>
     <div class="info" data-lcd-info><span class="run" data-lcd-run>{IDLE_INFO}</span></div>
   </div>
   <ul class="flags" aria-hidden="true">
     <li data-f="drag">Drag</li>
     <li data-f="load">Load</li>
-    <li data-f="play">▶ Play</li>
   </ul>
+  <!-- In the initial HTML and hidden: reachable with Tab only while a disc plays. -->
+  <button type="button" class="eject" data-lcd-eject hidden>
+    <span class="glyph" aria-hidden="true">⏏</span><span class="word">Eject</span>
+  </button>
 </div>
 
 <style>
@@ -102,22 +106,41 @@ const { total } = Astro.props;
   }
   .flags li { color: rgb(255 214 10 / 0.18); text-shadow: none; }
   .lcd[data-flag='drag'] [data-f='drag'],
-  .lcd[data-flag='load'] [data-f='load'],
-  .lcd[data-flag='play'] [data-f='play'] { color: var(--sun); text-shadow: 0 0 6px rgb(255 214 10 / 0.7); }
-  .lcd[data-flag='play'] [data-f='play'] { animation: blink 0.5s steps(1) infinite; }
-  @keyframes blink {
-    50% { color: rgb(255 214 10 / 0.25); }
+  .lcd[data-flag='load'] [data-f='load'] { color: var(--sun); text-shadow: 0 0 6px rgb(255 214 10 / 0.7); }
+
+  /* Eject takes the lamps' place while a disc plays: the lamps own the third column
+     otherwise, so only one of the two is ever in the grid. */
+  .lcd:global(.has-eject) .flags { display: none; }
+  .eject {
+    font: 700 11px/1 var(--pixel);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--on-sun);
+    background: var(--sun);
+    border: 0;
+    border-radius: 999px;
+    padding: 8px 12px;
+    min-height: 32px;
+    cursor: pointer;
+    box-shadow: 0 0 12px rgb(255 214 10 / 0.6);
   }
+  .eject[hidden] { display: none; }
+  .glyph { font-family: var(--ui); }
+  /* The page's accent ring is too dark on the faceplate's navy. */
+  .eject:focus-visible { outline: 2px solid var(--shade-3); outline-offset: 2px; }
 
   @media (max-width: 420px) {
-    .lcd { gap: 10px; padding: 0 10px; }
+    .lcd { gap: 8px; padding: 0 8px; }
     .flags { display: none; }
-    .ghost, .num { font-size: 26px; }
+    .ghost, .num { font-size: 24px; }
     .title { font-size: 14px; }
     .info { font-size: 12px; }
+    /* No room for the word beside the digits and the title: the glyph alone, at a size a
+       thumb can hit. The button keeps its name for screen readers. */
+    .word { display: none; }
+    .eject { width: 36px; height: 36px; padding: 0; font-size: 16px; }
   }
   @media (prefers-reduced-motion: reduce) {
     .info:global(.marquee) .run { animation: none; }
-    .lcd[data-flag='play'] [data-f='play'] { animation: none; }
   }
 </style>

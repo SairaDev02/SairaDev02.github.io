@@ -44,7 +44,11 @@ const playHere = (i: number) => {
 /** The route for every control that has to open the tab itself. */
 const openAndPlay = (i: number) => {
   if (player.isLoading()) return;
-  if (!openTab(tracks[i].url)) return announce(`New tab blocked. Click ${tracks[i].name} to open it`);
+  if (!openTab(tracks[i].url)) {
+    // The faceplate says the tab was blocked until the next Preview, drag or play.
+    player.block(i);
+    return announce(`New tab blocked. Click ${tracks[i].name} to open it`);
+  }
   playHere(i);
 };
 
@@ -53,6 +57,7 @@ const openAndPlay = (i: number) => {
 // Queue pick; a play and a reopen are announced where the tab opens.
 player.subscribe((now, before, why) => {
   if (why === 'return' && before.play) announce(`${tracks[before.play.i].name} returned`);
+  else if ((why === 'eject' || why === 'drag-out') && before.play) announce(`${tracks[before.play.i].name} ejected`);
   else if (now.cued !== before.cued && !now.play) announce(`Cued ${tracks[now.cued].name}`);
 });
 

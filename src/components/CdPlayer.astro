@@ -17,7 +17,7 @@ const { count } = Astro.props;
 // `'unsafe-inline'` exception, a hashed element needs none.
 const grids = `[data-player]{--wide-w:${WIDE.W};--wide-h:${WIDE.H};--narrow-w:${NARROW.W};--narrow-h:${NARROW.H}}`;
 Astro.csp?.insertStyleHash(`sha256-${createHash('sha256').update(grids).digest('base64')}`);
-const alt = `A CD player in a cloudy sky beside ${count} discs, one per public repository. Loading a disc into the player opens that repository; the track list below does the same.`;
+const alt = `A CD player in a cloudy sky beside ${count} discs, one per public repository. Clicking a disc or dragging it into the player opens that repository in a new tab and plays it for 30 seconds; the track list below does the same.`;
 ---
 
 <style is:inline set:html={grids}></style>
