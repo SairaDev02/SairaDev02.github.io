@@ -55,14 +55,14 @@ describe('playView', () => {
   it('offers to play the Cue while nothing plays', () => {
     const { player } = setup();
     player.cue(2);
-    expect(playView(player.get(), tracks)).toEqual({ label: 'Play quiet-notes, opens in a new tab', reopen: false });
+    expect(playView(player.get(), tracks)).toBe('Play quiet-notes, opens in a new tab');
   });
 
   it('offers to reopen the playing repository', () => {
     const { player, advance } = setup();
     player.play(1);
     advance(LOAD_MS);
-    expect(playView(player.get(), tracks)).toEqual({ label: 'Reopen paper-lantern in a new tab', reopen: true });
+    expect(playView(player.get(), tracks)).toBe('Reopen paper-lantern in a new tab');
   });
 });
 

@@ -69,7 +69,7 @@ export function mountDock(dock: HTMLElement, tracks: readonly Track[], player: P
     if (kicker.textContent !== label) kicker.textContent = label;
     if (queueLabel.textContent !== label) queueLabel.textContent = label;
     const play = playView(s, tracks);
-    for (const b of playButtons) if (b.getAttribute('aria-label') !== play.label) b.setAttribute('aria-label', play.label);
+    for (const b of playButtons) if (b.getAttribute('aria-label') !== play) b.setAttribute('aria-label', play);
     dock.classList.toggle('is-playing', s.play !== null);
     fill(p, jump);
     sing();
@@ -143,13 +143,13 @@ export function mountDock(dock: HTMLElement, tracks: readonly Track[], player: P
   // Lyrics: README lines, highlighted one at a time like synced lyrics, on the play's clock:
   // 2.6 s a line from the play's start. Idle, and under reduced motion, nothing is lit.
   let sung: HTMLElement[] = [];
-  let line = -2; // the lit line; -1 for none, -2 before the first reading
+  let lit = -2; // the lit line: -1 for none, -2 before the first reading
   const sing = () => {
     if (open !== 'lyrics') return;
     const p = player.progress();
     const k = !p || p.phase === 'load' || reducedMotion() ? -1 : Math.min(Math.floor(p.elapsed / LINE_MS), sung.length - 1);
-    if (k === line) return;
-    line = k;
+    if (k === lit) return;
+    lit = k;
     sung.forEach((li, j) => {
       li.classList.toggle('past', j < k);
       li.classList.toggle('now', j === k);
@@ -173,7 +173,7 @@ export function mountDock(dock: HTMLElement, tracks: readonly Track[], player: P
       }),
     );
     sung = [...list.querySelectorAll<HTMLElement>('li:not(.tag)')];
-    line = -2;
+    lit = -2;
     sing();
   };
 
@@ -264,8 +264,7 @@ export function mountDock(dock: HTMLElement, tracks: readonly Track[], player: P
   // The page pads and scrolls by the Dock's own height, so nothing focused or scrolled to
   // lands under the bar or an open panel. --dock-h is the fallback before this runs.
   const root = document.documentElement;
-  new ResizeObserver(() => root.style.setProperty('--dock-space', `${dock.getBoundingClientRect().height}px`)).observe(
-    dock,
-  );
+  const measure = () => root.style.setProperty('--dock-space', `${dock.getBoundingClientRect().height}px`);
+  new ResizeObserver(measure).observe(dock);
   return { nextAfter: (i: number) => stepFrom(queue, i, 1) };
 }
