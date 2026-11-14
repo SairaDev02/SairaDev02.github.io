@@ -1,9 +1,31 @@
-// The Dock's picks: Prev, Next and a Queue pick. While nothing plays they move the Cue;
-// during a play they open the chosen repository's tab and play its disc. Their names say
-// which, so a listener knows what pressing them does.
+// The Dock's controls and their names: the label above the title, Play, Prev, Next and a
+// Queue pick. While nothing plays the picks move the Cue; during a play they open the chosen
+// repository's tab and play its disc. Their names say which, so a listener knows what
+// pressing them does.
 import type { Track } from '../../lib/format';
-import type { PlayerSnapshot, PlayerState } from '../player-state';
+import type { PlayerSnapshot, PlayerState, Progress } from '../player-state';
 import { stepFrom } from './queue';
+
+/** The label above the Dock's title, in the Queue panel's top section too. */
+export function kickerView(s: PlayerSnapshot, p: Progress | null): string {
+  if (!s.play || !p) return 'Ready to play';
+  return p.phase === 'load' ? 'Loading · opened in a new tab' : 'Now playing';
+}
+
+export interface PlayView {
+  /** The button's accessible name: it names its target and what pressing it does. */
+  label: string;
+  /** A play is running, so pressing it reopens the playing repository's tab. */
+  reopen: boolean;
+}
+
+/** The Play button: it opens the Cue's repository, or the playing one's tab again. */
+export function playView(s: PlayerSnapshot, tracks: readonly Track[]): PlayView {
+  const i = s.play?.i ?? s.cued;
+  return s.play
+    ? { label: `Reopen ${tracks[i].name} in a new tab`, reopen: true }
+    : { label: `Play ${tracks[i].name}, opens in a new tab`, reopen: false };
+}
 
 /** A pick cues while nothing plays and plays during a play. */
 const mode = (s: PlayerSnapshot) => (s.play ? 'play' : 'cue');
