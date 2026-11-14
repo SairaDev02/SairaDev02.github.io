@@ -250,7 +250,7 @@ test.describe('lyrics during a play', () => {
   test.beforeEach(async ({ page }) => {
     await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
     await page.addInitScript(() => {
-      window.open = (() => ({ opener: null })) as unknown as typeof window.open;
+      Object.defineProperty(window, 'open', { configurable: true, writable: true, value: () => ({ opener: null }) });
     });
     await page.goto('/');
     await page.getByRole('button', { name: 'Lyrics', exact: true }).click();
@@ -369,9 +369,9 @@ test.describe('queue panel', () => {
 
 test.describe('playing a track', () => {
   test('a track list click opens the repository in a new tab and plays its disc', async ({ page, context }) => {
-    const popup = context.waitForEvent('page');
+    const openedTab = context.waitForEvent('page');
     await page.locator('[data-track="1"]').click();
-    await (await popup).waitForURL('https://github.com/SairaDev02/paper-lantern');
+    await (await openedTab).waitForURL('https://github.com/SairaDev02/paper-lantern');
 
     // The site stays on screen and plays the disc.
     expect(new URL(page.url()).pathname).toBe('/');
@@ -411,27 +411,27 @@ test.describe('playing a track', () => {
 
   test('the playlist play button opens the cued repository in a new tab', async ({ page, context }) => {
     await page.getByRole('button', { name: 'Next: paper-lantern' }).click();
-    const popup = context.waitForEvent('page');
+    const openedTab = context.waitForEvent('page');
     // The header's Play shares its wording with the Dock's: the region tells them apart.
     await page.getByRole('region', { name: 'Repositories' }).getByRole('button', { name: 'Play paper-lantern, opens in a new tab' }).click();
-    await (await popup).waitForURL('https://github.com/SairaDev02/paper-lantern');
+    await (await openedTab).waitForURL('https://github.com/SairaDev02/paper-lantern');
     await expect(dock(page).locator('[data-np-kicker]')).toHaveText('Now playing');
   });
 
   test('with reduced motion, a play still opens the repository', async ({ page, context }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    const popup = context.waitForEvent('page');
+    const openedTab = context.waitForEvent('page');
     await page.locator('[data-track="2"]').click();
-    await (await popup).waitForURL('https://github.com/SairaDev02/quiet-notes');
+    await (await openedTab).waitForURL('https://github.com/SairaDev02/quiet-notes');
     // The play still counts: the load gives way to the play on the clock.
     await expect(page.locator('[data-lcd-title]')).toHaveText('quiet-notes');
   });
 
   test('a modified click opens the repository in a new tab and still plays the disc', async ({ page, context, isMobile }) => {
     test.skip(isMobile, 'no modifier keys on phones');
-    const popup = context.waitForEvent('page');
+    const openedTab = context.waitForEvent('page');
     await page.locator('[data-track="0"]').click({ modifiers: ['ControlOrMeta'] });
-    await (await popup).waitForURL('https://github.com/SairaDev02/tidepool');
+    await (await openedTab).waitForURL('https://github.com/SairaDev02/tidepool');
     await expect(dock(page).locator('[data-np-kicker]')).toHaveText('Now playing');
     expect(new URL(page.url()).hostname).toBe('127.0.0.1');
   });
@@ -454,10 +454,10 @@ test.describe('the waveform', () => {
     await expect(page.getByRole('progressbar')).toHaveCount(0);
 
     // Pressing it plays nothing: the Dock stays on the first track and no tab opens.
-    const popup = page.waitForEvent('popup', { timeout: 500 }).catch(() => null);
+    const openedTab = page.waitForEvent('popup', { timeout: 500 }).catch(() => null);
     const box = (await waves.boundingBox())!;
     await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-    expect(await popup, 'no tab opens from the waveform').toBeNull();
+    expect(await openedTab, 'no tab opens from the waveform').toBeNull();
     await expect(dock(page).locator('[data-np-kicker]')).toHaveText('Ready to play');
     await expect(dockTitle(page)).toHaveText('01 tidepool');
   });
@@ -485,7 +485,7 @@ test.describe('the Dock clears the page', () => {
 
   test('a play brings the picture back above the Dock', async ({ page }) => {
     await page.addInitScript(() => {
-      window.open = (() => ({ opener: null })) as unknown as typeof window.open;
+      Object.defineProperty(window, 'open', { configurable: true, writable: true, value: () => ({ opener: null }) });
     });
     // A short window, so the page can scroll the picture out of sight before the play, and
     // tall enough that the picture fits in the space the Dock leaves above it.

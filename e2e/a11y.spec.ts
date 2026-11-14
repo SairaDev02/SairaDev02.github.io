@@ -49,7 +49,7 @@ test.describe('axe scan', () => {
     // The tab a play opens is not the subject: the page that plays is.
     await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
     await page.addInitScript(() => {
-      window.open = (() => ({ opener: null })) as unknown as typeof window.open;
+      Object.defineProperty(window, 'open', { configurable: true, writable: true, value: () => ({ opener: null }) });
     });
     await page.goto('/');
     await page.locator('[data-dock] [data-np="play"]').click();

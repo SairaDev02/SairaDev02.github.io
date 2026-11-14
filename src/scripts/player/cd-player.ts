@@ -118,12 +118,17 @@ export async function mountCdPlayer(root: HTMLElement, tracks: readonly Track[],
   const end = (e: PointerEvent, cancelled: boolean) => {
     if (!scene?.drag || press?.id !== e.pointerId) return;
     const i = scene.drag.i;
+    // A press that never moved is a click, which the drag cannot tell from a drop.
+    const clicked = !scene.drag.moved;
     press = null;
     if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
     // The tray's own disc being dragged out is an Eject; any other disc is on its way in.
     const playing = player.get().play?.i === i;
     const r = scene.endDrag(cancelled, playing);
     if (r === 'load' && !playing) openAndPlay(i);
+    // A click on the playing disc is the Reopen route the Dock's Play also offers. A drag
+    // that leaves the tray and comes back, or Escape, is no click: the play just goes on.
+    else if (playing && clicked && !cancelled) openAndPlay(i);
     if (r === 'drop' && playing) player.eject('drag-out');
     updateLcd();
     setCursor();

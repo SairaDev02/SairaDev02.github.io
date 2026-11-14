@@ -60,16 +60,21 @@ export function mountDock(dock: HTMLElement, tracks: readonly Track[], player: P
       } else el.style.clipPath = value;
     }
   };
-  // The label above the title, the Play button's name, the waveform and the lyrics read the
-  // play's clock, so the load gives way to the play on the clock, not on an animation.
+  // The label above the title, the Play button's name and glyph, the waveform and the lyrics
+  // read the play's clock, so the load gives way to the play on the clock, not on an animation.
   const tick = (jump = false) => {
     const s = player.get();
     const p = player.progress();
     const label = kickerView(s, p);
     if (kicker.textContent !== label) kicker.textContent = label;
     if (queueLabel.textContent !== label) queueLabel.textContent = label;
+    // Every Play on the page carries the same name and the same glyph: one update, both
+    // buttons, so a button that says Reopen never shows ▶.
     const play = playView(s, tracks);
-    for (const b of playButtons) if (b.getAttribute('aria-label') !== play) b.setAttribute('aria-label', play);
+    for (const b of playButtons) {
+      if (b.getAttribute('aria-label') !== play) b.setAttribute('aria-label', play);
+      b.classList.toggle('is-reopen', s.play !== null);
+    }
     dock.classList.toggle('is-playing', s.play !== null);
     fill(p, jump);
     sing();

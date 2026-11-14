@@ -6,9 +6,12 @@ import type { Track } from '../../lib/format';
 import type { PlayerSnapshot, PlayerState, Progress } from '../player-state';
 import { stepFrom } from './queue';
 
+/** The label above the Dock's title while nothing plays: the Queue panel's top label too. */
+export const IDLE_KICKER = 'Ready to play';
+
 /** The label above the Dock's title, in the Queue panel's top section too. */
 export function kickerView(s: PlayerSnapshot, p: Progress | null): string {
-  if (!s.play || !p) return 'Ready to play';
+  if (!s.play || !p) return IDLE_KICKER;
   return p.phase === 'load' ? 'Loading · opened in a new tab' : 'Now playing';
 }
 

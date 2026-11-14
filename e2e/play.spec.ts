@@ -12,6 +12,15 @@ const playButton = (page: Page) => page.locator('[data-dock] [data-np="play"]');
 const kicker = (page: Page) => page.locator('[data-dock] [data-np-kicker]');
 const status = (page: Page) => page.getByRole('status');
 
+/**
+ * Freezes the page's clock a moment ahead of where it has got to. An installed clock keeps
+ * flowing with real time, so a target a fixed two seconds ahead can already be in the past
+ * by the time the call lands: only the page's own clock is a safe reference. The lead only
+ * has to outlast the round trip, and a jump of it fires nothing the page has scheduled yet.
+ */
+const pauseClock = async (page: Page, leadMs = 500) =>
+  page.clock.pauseAt(new Date((await page.evaluate(() => Date.now())) + leadMs));
+
 test.describe('opening a repository', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
@@ -20,9 +29,9 @@ test.describe('opening a repository', () => {
   test('a click on a disc opens it in a new tab and plays it', async ({ page, context }) => {
     await waitForScene(page);
     const { g, at } = await picture(page);
-    const popup = context.waitForEvent('page');
+    const openedTab = context.waitForEvent('page');
     await page.mouse.click(...at(...layoutDiscs(4, g.discArea).slots[0]));
-    await (await popup).waitForURL(`${REPO}tidepool`);
+    await (await openedTab).waitForURL(`${REPO}tidepool`);
 
     expect(new URL(page.url()).pathname).toBe('/');
     await expect(page.locator('[data-dock]')).toHaveClass(/is-playing/);
@@ -31,9 +40,9 @@ test.describe('opening a repository', () => {
 
   test("the Dock's Play opens the cued repository in a new tab", async ({ page, context }) => {
     await page.getByRole('button', { name: 'Next: paper-lantern' }).click();
-    const popup = context.waitForEvent('page');
+    const openedTab = context.waitForEvent('page');
     await playButton(page).click();
-    await (await popup).waitForURL(`${REPO}paper-lantern`);
+    await (await openedTab).waitForURL(`${REPO}paper-lantern`);
 
     expect(new URL(page.url()).pathname).toBe('/');
     await expect(page.locator('[data-dock]')).toHaveClass(/is-playing/);
@@ -42,9 +51,9 @@ test.describe('opening a repository', () => {
 
   test('a middle click keeps the link in a new tab and still plays the disc', async ({ page, context, isMobile }) => {
     test.skip(isMobile, 'no middle button on phones');
-    const popup = context.waitForEvent('page');
+    const openedTab = context.waitForEvent('page');
     await page.locator('[data-track="2"]').click({ button: 'middle' });
-    await (await popup).waitForURL(`${REPO}quiet-notes`);
+    await (await openedTab).waitForURL(`${REPO}quiet-notes`);
     await expect(page.locator('[data-dock]')).toHaveClass(/is-playing/);
     expect(new URL(page.url()).pathname).toBe('/');
   });
@@ -53,12 +62,12 @@ test.describe('opening a repository', () => {
     test.skip(isMobile, 'drag with a pointer');
     await waitForScene(page);
     const { g, at } = await picture(page);
-    const popup = context.waitForEvent('page');
+    const openedTab = context.waitForEvent('page');
     await page.mouse.move(...at(...layoutDiscs(4, g.discArea).slots[0]));
     await page.mouse.down();
     await page.mouse.move(...at(g.tray.x, g.tray.y), { steps: 10 });
     await page.mouse.up();
-    await (await popup).waitForURL(`${REPO}tidepool`);
+    await (await openedTab).waitForURL(`${REPO}tidepool`);
     await expect(page.locator('[data-dock]')).toHaveClass(/is-playing/);
   });
 });
@@ -68,7 +77,7 @@ test.describe('a play on the clock', () => {
     // The tab itself is covered above; here the clock is the subject, so the tab is faked.
     await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
     await page.addInitScript(() => {
-      window.open = (() => ({ opener: null })) as unknown as typeof window.open;
+      Object.defineProperty(window, 'open', { configurable: true, writable: true, value: () => ({ opener: null }) });
     });
     await page.goto('/');
   });
@@ -170,7 +179,7 @@ test.describe('a play on the clock', () => {
 
   test('with reduced motion, the play still counts on the faceplate', async ({ page }) => {
     // An installed clock still flows with real time; paused it moves only when told to.
-    await page.clock.pauseAt(new Date('2026-01-01T00:00:02Z'));
+    await pauseClock(page);
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await playButton(page).click();
     await page.clock.fastForward(1_600);
@@ -184,7 +193,7 @@ test.describe('a play on the clock', () => {
 
   test('the waveform fills over the play, from the clock', async ({ page, isMobile }) => {
     test.skip(isMobile, 'the waveform shows from 900 px up');
-    await page.clock.pauseAt(new Date('2026-01-01T00:00:02Z'));
+    await pauseClock(page);
     const play = playButton(page);
     await play.click();
     const fill = page.locator('[data-wave]:not([hidden]) [data-wave-fill]');
@@ -209,7 +218,7 @@ test.describe('reopening the playing repository', () => {
     // A frozen clock, so the time on the faceplate is exactly where a test leaves it.
     await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
     await page.goto('/');
-    await page.clock.pauseAt(new Date('2026-01-01T00:00:10Z'));
+    await pauseClock(page);
   });
 
   test('Play becomes Reopen, and pressing it opens the tab again without restarting the play', async ({ page, context }) => {
@@ -223,10 +232,12 @@ test.describe('reopening the playing repository', () => {
     await expect(play).toHaveAccessibleName('Reopen tidepool in a new tab');
     await expect(play.locator('.i-reopen')).toBeVisible();
     await expect(play.locator('.i-play')).toBeHidden();
-    // The playlist header's Play is the same control, and says the same words.
-    await expect(
-      page.getByRole('region', { name: 'Repositories' }).getByRole('button', { name: 'Reopen tidepool in a new tab' }),
-    ).toBeVisible();
+    // The playlist header's Play is the same control: it says the same words, and its glyph
+    // agrees with them.
+    const header = page.getByRole('region', { name: 'Repositories' }).getByRole('button', { name: 'Reopen tidepool in a new tab' });
+    await expect(header).toBeVisible();
+    await expect(header.locator('.i-reopen')).toBeVisible();
+    await expect(header.locator('.i-play')).toBeHidden();
 
     await page.clock.fastForward(1_400 + 5_000);
     await expect(page.locator('[data-lcd-num]')).toHaveText('0:05');
@@ -242,12 +253,49 @@ test.describe('reopening the playing repository', () => {
   });
 });
 
+test.describe('reopening from the disc in the tray', () => {
+  test('a click on the playing disc reopens its tab and the play goes on', async ({ page, context }) => {
+    await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
+    await page.goto('/');
+    await waitForScene(page);
+    // The picture in the middle of the screen, so the play's own scrollIntoView moves
+    // nothing and the geometry below stays valid while the clock is frozen.
+    await page.locator('[data-player] canvas').evaluate((c) => c.scrollIntoView({ block: 'center' }));
+    const { g, at } = await picture(page);
+    await pauseClock(page);
+
+    const first = context.waitForEvent('page');
+    await playButton(page).click();
+    await (await first).waitForURL(`${REPO}tidepool`);
+    // Frames on the frozen clock: the disc travels into the tray, where the pointer finds it.
+    await page.clock.runFor(1_500);
+    await page.clock.fastForward(5_000);
+    await expect(page.locator('[data-lcd-num]')).toHaveText('0:05');
+
+    const reopened = context.waitForEvent('page');
+    await page.mouse.click(...at(g.tray.x, g.tray.y));
+    await (await reopened).waitForURL(`${REPO}tidepool`);
+    await expect(status(page)).toHaveText('Reopened tidepool in a new tab');
+    // The 30 s kept counting: the faceplate is where it was, and the play ends on its own time.
+    await expect(page.locator('[data-lcd-num]')).toHaveText('0:05');
+    await page.clock.fastForward(10_000);
+    await expect(page.locator('[data-lcd-num]')).toHaveText('0:15');
+    await page.clock.fastForward(15_100);
+    // It ended on the first press's 30 s, not 30 s after the reopen.
+    await expect(status(page)).toHaveText('tidepool returned');
+    await expect(page.locator('[data-dock]')).not.toHaveClass(/is-playing/);
+    // Idle again: the glyph goes back to ▶ with the name, from that same update.
+    await expect(playButton(page).locator('.i-play')).toBeVisible();
+    await expect(playButton(page)).toHaveAccessibleName('Play paper-lantern, opens in a new tab');
+  });
+});
+
 test.describe('ending a play early', () => {
   test.beforeEach(async ({ page }) => {
     // The tab is not the subject: only the faceplate's Eject is.
     await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
     await page.addInitScript(() => {
-      window.open = (() => ({ opener: null })) as unknown as typeof window.open;
+      Object.defineProperty(window, 'open', { configurable: true, writable: true, value: () => ({ opener: null }) });
     });
     await page.goto('/');
   });
@@ -299,7 +347,7 @@ test.describe('dragging on the picture', () => {
   test.beforeEach(async ({ page, isMobile }) => {
     test.skip(isMobile, 'drag with a pointer');
     await page.addInitScript(() => {
-      window.open = (() => ({ opener: null })) as unknown as typeof window.open;
+      Object.defineProperty(window, 'open', { configurable: true, writable: true, value: () => ({ opener: null }) });
     });
     await page.goto('/');
     await waitForScene(page);
@@ -344,6 +392,24 @@ test.describe('dragging on the picture', () => {
     await hoverUntil(page, at, body, 'Pick a disc');
   });
 
+  test('dragging the playing disc out and back in keeps the play and reopens nothing', async ({ page }) => {
+    const { g, at } = await picture(page);
+    await page.mouse.click(...at(...layoutDiscs(4, g.discArea).slots[0]));
+    await expect(page.locator('[data-lcd-title]')).toHaveText('tidepool');
+    await expect(status(page)).toHaveText('Playing tidepool, opened in a new tab');
+
+    // Out of the tray and back: a drag, not a click on the playing disc.
+    await page.mouse.move(...at(g.tray.x, g.tray.y));
+    await page.mouse.down();
+    await page.mouse.move(...at(g.tray.x + 60, g.tray.y - 60), { steps: 8 });
+    await page.mouse.move(...at(g.tray.x, g.tray.y), { steps: 8 });
+    await page.mouse.up();
+
+    // Nothing was announced: no tab was reopened, and the disc plays on.
+    await expect(status(page)).toHaveText('Playing tidepool, opened in a new tab');
+    await expect(page.locator('[data-dock]')).toHaveClass(/is-playing/);
+  });
+
   test('Escape cancels a drag and nothing plays', async ({ page }) => {
     const { g, at } = await picture(page);
     const slot = layoutDiscs(4, g.discArea).slots[1];
@@ -365,7 +431,7 @@ test.describe('dragging on the picture', () => {
 test.describe('a blocked tab', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
-      window.open = (() => null) as typeof window.open;
+      Object.defineProperty(window, 'open', { configurable: true, writable: true, value: () => null });
     });
     await page.goto('/');
   });
@@ -394,14 +460,18 @@ test.describe('a drop whose user activation ran out', () => {
     test.skip(isMobile, 'drag with a pointer');
     // A browser refuses a new tab once user activation has run out (Chromium: 5 s from
     // the press). A pointer drag's own drop is a gesture, and Playwright's Chromium allows
-    // every popup, so the rule is emulated here — this is the browser's rule, not the
+    // every new tab, so the rule is emulated here — this is the browser's rule, not the
     // page's: openTab → null → block runs as it does in a browser that refused the tab.
     await page.addInitScript(() => {
       const open = window.open.bind(window);
       let pressed = -Infinity;
       addEventListener('pointerdown', () => (pressed = Date.now()), true);
-      window.open = ((url?: string | URL, target?: string, features?: string) =>
-        Date.now() - pressed > 5000 ? null : open(url, target, features)) as typeof window.open;
+      Object.defineProperty(window, 'open', {
+        configurable: true,
+        writable: true,
+        value: (url?: string | URL, target?: string, features?: string) =>
+          Date.now() - pressed > 5000 ? null : open(url, target, features),
+      });
     });
     await page.goto('/');
     await waitForScene(page);
