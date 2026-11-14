@@ -7,6 +7,17 @@ import { expect, test } from './test';
 
 const dock = (page: Page) => page.getByRole('region', { name: 'Now playing' });
 const dockTitle = (page: Page) => dock(page).locator('[data-np-title]');
+/** The Dock's own Play button: the playlist header has one with the same name. */
+const dockPlay = (page: Page) => dock(page).locator('[data-np="play"]');
+const queuePanel = (page: Page) => page.getByRole('region', { name: 'Queue', exact: true });
+
+/** How far an element's bottom edge clears the Dock's top edge; negative means it is under it. */
+const clearance = async (page: Page, el: Locator) => {
+  const [box, dockBox] = [await el.boundingBox(), await page.locator('[data-dock]').boundingBox()];
+  expect(box, 'the element has a box').not.toBeNull();
+  expect(dockBox, 'the dock has a box').not.toBeNull();
+  return dockBox!.y - (box!.y + box!.height);
+};
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -57,10 +68,14 @@ test.describe('page content', () => {
 });
 
 test.describe('now-playing dock', () => {
-  test('starts on the first track, up next', async ({ page }) => {
-    await expect(dock(page).locator('[data-np-kicker]')).toHaveText('Up next');
+  test('starts ready to play on the first track', async ({ page }) => {
+    await expect(dock(page).locator('[data-np-kicker]')).toHaveText('Ready to play');
     await expect(dockTitle(page)).toHaveText('01 tidepool');
     await expect(dock(page).locator('[data-np-sub]')).toHaveText('Rust · cli · audio · synth');
+    await expect(dockPlay(page)).toHaveAccessibleName('Play tidepool, opens in a new tab');
+    // The old wording is gone with the old behaviour.
+    await expect(page.getByText('Up next')).toHaveCount(0);
+    await expect(page.getByText('Next up')).toHaveCount(0);
   });
 
   test('hovering a track previews it without moving the dock', async ({ page, isMobile }) => {
@@ -126,9 +141,12 @@ test.describe('now-playing dock', () => {
     await expect(page.getByRole('status')).toHaveText('Cued tidepool');
   });
 
-  test('shuffle toggles', async ({ page, isMobile }) => {
-    test.skip(isMobile, 'the dock hides shuffle on phones');
-    const shuffle = page.getByRole('button', { name: 'Shuffle the queue' });
+  test('shuffle toggles from the bar', async ({ page, isMobile }) => {
+    test.skip(isMobile, 'on phones Shuffle lives in the Queue panel header');
+    const shuffle = page.locator('[data-dock] .ctrl [data-np="shuffle"]');
+    await expect(shuffle).toBeVisible();
+    // The panel's own copy is the phone's, and stays out of the way from 600 px up.
+    await expect(queuePanel(page).locator('[data-np="shuffle"]')).toBeHidden();
     await expect(shuffle).toHaveAttribute('aria-pressed', 'false');
     await shuffle.click();
     await expect(shuffle).toHaveAttribute('aria-pressed', 'true');
@@ -200,20 +218,21 @@ test.describe('lyrics panel', () => {
     await expect(panel.getByText('No README yet. This one is an instrumental.')).toBeVisible();
   });
 
-  test('keeps its place while a row is previewed', async ({ page, isMobile }) => {
-    test.skip(isMobile, 'no hover on touch screens');
+  test('shows the README with no highlight while nothing plays', async ({ page, isMobile }) => {
     await page.getByRole('button', { name: 'Lyrics', exact: true }).click();
     const panel = page.getByRole('region', { name: 'Lyrics: README of the cued repository' });
-    const title = panel.locator('[data-lyrics-title]');
-    await expect(title).toHaveText('Lyrics · 01 tidepool');
+    const lines = panel.locator('[data-lines] li:not(.tag)');
+    await expect(lines).toHaveText(['Turns tide tables into slow, swelling drones.', 'Pipe a tide chart in and listen to the harbour breathe.']);
+    // Nothing is lit until a play runs.
+    await expect(panel.locator('[data-lines] li.now')).toHaveCount(0);
+    await expect(panel.locator('[data-lines] li.past')).toHaveCount(0);
 
-    // The highlight moves past the first line on its own, every 2.6 s.
-    const first = panel.locator('[data-lines] li').first();
-    await expect(first).toHaveClass(/\bpast\b/);
+    if (isMobile) return; // no hover on touch screens
+    // A preview leaves the panel where it was: same track, still nothing lit.
     await page.locator('[data-track="1"]').hover();
-    // A preview leaves the panel where it was: same track, and the highlight is not restarted.
-    await expect(title).toHaveText('Lyrics · 01 tidepool');
-    await expect(first).toHaveClass(/\bpast\b/);
+    await expect(panel.locator('[data-lyrics-title]')).toHaveText('Lyrics · 01 tidepool');
+    await expect(panel.locator('[data-lines] li.now')).toHaveCount(0);
+    await expect(panel.locator('[data-lines] li.past')).toHaveCount(0);
   });
 
   test('closes with Escape', async ({ page }) => {
@@ -223,6 +242,55 @@ test.describe('lyrics panel', () => {
     await page.keyboard.press('Escape');
     await expect(toggle).toHaveAttribute('aria-expanded', 'false');
     await expect(page.locator('[data-panel="lyrics"]')).toBeHidden();
+  });
+});
+
+test.describe('lyrics during a play', () => {
+  // The clock is the subject, so the tab a play opens is not: the page that plays is.
+  test.beforeEach(async ({ page }) => {
+    await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
+    await page.addInitScript(() => {
+      window.open = (() => ({ opener: null })) as unknown as typeof window.open;
+    });
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Lyrics', exact: true }).click();
+  });
+
+  test('moves the highlight on the play clock, and stops when the play ends', async ({ page }) => {
+    const panel = page.getByRole('region', { name: 'Lyrics: README of the cued repository' });
+    const lines = panel.locator('[data-lines] li:not(.tag)');
+    await expect(panel.locator('[data-lines] li.now')).toHaveCount(0);
+
+    await dockPlay(page).click();
+    // The load lights nothing: the play starts when the disc lands.
+    await expect(panel.locator('[data-lines] li.now')).toHaveCount(0);
+    await page.clock.fastForward(1_400);
+    await expect(lines.nth(0)).toHaveClass(/\bnow\b/);
+
+    // One line every 2.6 s, from the play's start.
+    await page.clock.fastForward(2_600);
+    await expect(lines.nth(1)).toHaveClass(/\bnow\b/);
+    await expect(lines.nth(0)).toHaveClass(/\bpast\b/);
+
+    // Eject ends the play, and the highlight with it.
+    await page.locator('[data-lcd-eject]').click();
+    await expect(panel.locator('[data-lines] li.now')).toHaveCount(0);
+    await expect(panel.locator('[data-lines] li.past')).toHaveCount(0);
+    await page.clock.fastForward(5_000);
+    await expect(panel.locator('[data-lines] li.now')).toHaveCount(0);
+  });
+
+  test('with reduced motion, the Lyrics show the README with no highlight', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    const panel = page.getByRole('region', { name: 'Lyrics: README of the cued repository' });
+    await dockPlay(page).click();
+    await page.clock.fastForward(1_400 + 5_000);
+    // The play is running: the faceplate counts...
+    await expect(page.locator('[data-lcd-num]')).toHaveText('0:05');
+    // ...and the README is there, unlit.
+    await expect(panel.locator('[data-lines] li:not(.tag)')).toHaveCount(2);
+    await expect(panel.locator('[data-lines] li.now')).toHaveCount(0);
+    await expect(panel.locator('[data-lines] li.past')).toHaveCount(0);
   });
 });
 
@@ -260,6 +328,22 @@ test.describe('queue panel', () => {
     await expect(nextUp(page)).toHaveText(['quiet-notes', 'empty-box', 'paper-lantern']);
   });
 
+  test('on a phone, Shuffle sits in the Queue panel header', async ({ page, isMobile }) => {
+    test.skip(!isMobile, 'the bar carries Shuffle from 600 px up');
+    const shuffle = panel(page).locator('[data-np="shuffle"]');
+    await expect(shuffle).toBeVisible();
+    // The bar keeps Prev, Play, Next, Lyrics and Queue, and drops its own Shuffle.
+    await expect(page.locator('[data-dock] .ctrl [data-np="shuffle"]')).toBeHidden();
+    await expect(page.locator('[data-dock] .ctrl [data-np]')).toHaveCount(4);
+    await expect(page.locator('[data-dock] [data-np-panel]')).toHaveCount(2);
+
+    await expect(shuffle).toHaveAttribute('aria-pressed', 'false');
+    await shuffle.click();
+    await expect(shuffle).toHaveAttribute('aria-pressed', 'true');
+    // It is the same shuffle: Next follows the new order.
+    await expect(page.getByRole('button', { name: /^Next: / })).toBeVisible();
+  });
+
   test('picking a track cues it, and the cue buttons report their pressed state', async ({ page }) => {
     // A cue button is named by its visible text: repository name, then language and commits.
     const names = [
@@ -293,7 +377,6 @@ test.describe('playing a track', () => {
     expect(new URL(page.url()).pathname).toBe('/');
     await expect(dock(page).locator('[data-np-kicker]')).toHaveText('Now playing');
     await expect(page.locator('[data-dock]')).toHaveClass(/is-playing/);
-    await expect(page.locator('[data-lcd-title]')).toHaveText('Loading paper-lantern');
     // The playing row keeps the solid yellow fill that a preview only washes towards.
     const playing = page.locator('[data-track="1"]');
     await expect(playing).toHaveClass(/\bon\b/);
@@ -329,7 +412,8 @@ test.describe('playing a track', () => {
   test('the playlist play button opens the cued repository in a new tab', async ({ page, context }) => {
     await page.getByRole('button', { name: 'Next: paper-lantern' }).click();
     const popup = context.waitForEvent('page');
-    await page.getByRole('button', { name: 'Play the cued repository: opens it' }).click();
+    // The header's Play shares its wording with the Dock's: the region tells them apart.
+    await page.getByRole('region', { name: 'Repositories' }).getByRole('button', { name: 'Play paper-lantern, opens in a new tab' }).click();
     await (await popup).waitForURL('https://github.com/SairaDev02/paper-lantern');
     await expect(dock(page).locator('[data-np-kicker]')).toHaveText('Now playing');
   });
@@ -350,5 +434,70 @@ test.describe('playing a track', () => {
     await (await popup).waitForURL('https://github.com/SairaDev02/tidepool');
     await expect(dock(page).locator('[data-np-kicker]')).toHaveText('Now playing');
     expect(new URL(page.url()).hostname).toBe('127.0.0.1');
+  });
+});
+
+test.describe('the waveform', () => {
+  test('is a progress fill, with nothing to click, focus or announce', async ({ page, isMobile }) => {
+    test.skip(isMobile, 'the waveform shows from 900 px up');
+    const waves = page.locator('[data-dock] .waves');
+    await expect(waves).toBeVisible();
+    // Hidden from the accessibility tree: the outer SVG already is, and no layer adds a node.
+    await expect(waves).toHaveAttribute('aria-hidden', 'true');
+    expect(
+      await waves.locator('svg').evaluateAll((all) => all.length > 0 && all.every((svg) => svg.getAttribute('aria-hidden') === 'true')),
+    ).toBe(true);
+    // No pointer or keyboard route: nothing inside is focusable, named or clickable.
+    expect(await waves.locator('a, button, input, select, textarea, [tabindex], [role], [onclick]').count()).toBe(0);
+    expect(await waves.evaluate((el) => getComputedStyle(el).cursor)).not.toBe('pointer');
+    await expect(page.getByRole('slider')).toHaveCount(0);
+    await expect(page.getByRole('progressbar')).toHaveCount(0);
+
+    // Pressing it plays nothing: the Dock stays on the first track and no tab opens.
+    const popup = page.waitForEvent('popup', { timeout: 500 }).catch(() => null);
+    const box = (await waves.boundingBox())!;
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    expect(await popup, 'no tab opens from the waveform').toBeNull();
+    await expect(dock(page).locator('[data-np-kicker]')).toHaveText('Ready to play');
+    await expect(dockTitle(page)).toHaveText('01 tidepool');
+  });
+});
+
+test.describe('the Dock clears the page', () => {
+  test('the last footer link, when focused, lands above the Dock', async ({ page }) => {
+    const link = page.getByRole('contentinfo').getByRole('link').last();
+    await link.focus();
+    await expect(link).toBeFocused();
+    await expect(link).toBeInViewport();
+    // In the viewport is not enough: the Dock floats over it.
+    expect(await clearance(page, link)).toBeGreaterThan(-0.5);
+  });
+
+  test('a track row focused with a panel open lands above it', async ({ page }) => {
+    await page.getByRole('button', { name: 'Queue', exact: true }).click();
+    await expect(queuePanel(page)).toBeVisible();
+    const row = page.locator('[data-track="3"]');
+    await row.focus();
+    await expect(row).toBeFocused();
+    await expect(row).toBeInViewport();
+    expect(await clearance(page, row)).toBeGreaterThan(-0.5);
+  });
+
+  test('a play brings the picture back above the Dock', async ({ page }) => {
+    await page.addInitScript(() => {
+      window.open = (() => ({ opener: null })) as unknown as typeof window.open;
+    });
+    // A short window, so the page can scroll the picture out of sight before the play, and
+    // tall enough that the picture fits in the space the Dock leaves above it.
+    const [w] = await page.evaluate(() => [innerWidth] as const);
+    await page.setViewportSize({ width: w, height: 700 });
+    await page.reload();
+    await page.mouse.wheel(0, 20_000);
+    const canvas = page.locator('[data-player] canvas');
+    await expect(canvas).not.toBeInViewport();
+
+    await dockPlay(page).click();
+    // The picture scrolls into view, and the Dock's height keeps its bottom edge clear.
+    await expect.poll(() => clearance(page, canvas)).toBeGreaterThan(-0.5);
   });
 });

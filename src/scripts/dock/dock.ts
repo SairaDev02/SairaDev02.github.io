@@ -1,13 +1,13 @@
 // The fixed now-playing dock (NowPlaying.astro): the cued track, transport controls, a
-// commit-waveform scrubber, and two panels above the bar: Lyrics (the README as lines,
+// commit-waveform progress fill, and two panels above the bar: Lyrics (the README as lines,
 // highlighted one by one) and Queue (play order, reorderable by drag or buttons).
 // The queue order and the open panel are the dock's own state; what is cued or playing
-// belongs to the player state.
+// belongs to the player state, and every word the dock says about a play comes from the
+// play's clock, never from frames or chained timers.
 import { dotDate, languageOf, plural, trackNo, type Track } from '../../lib/format';
-import type { PlayerState } from '../player-state';
+import type { PlayerState, Progress } from '../player-state';
 import { reducedMotion } from '../render/canvas';
-import { LOAD } from '../player/timing';
-import { pick, stepView, type Step } from './controls';
+import { kickerView, pick, playView, stepView, type Step } from './controls';
 import { naturalOrder, reorder, shuffleAround, stepFrom, upNext } from './queue';
 
 const LINE_MS = 2600; // pace of the lyric highlight
@@ -24,6 +24,9 @@ export function mountDock(dock: HTMLElement, tracks: readonly Track[], player: P
   const busy = () => player.isLoading();
 
   // ---------- bar ----------
+  const kicker = $('[data-np-kicker]');
+  const queueLabel = $('[data-q-kicker]');
+  const playButtons = [...document.querySelectorAll<HTMLElement>('[data-np="play"]')];
   const show = (i: number) => {
     const t = tracks[i];
     $('[data-np-title]').textContent = `${trackNo(i)} ${t.name}`;
@@ -42,26 +45,53 @@ export function mountDock(dock: HTMLElement, tracks: readonly Track[], player: P
     for (const b of dock.querySelectorAll<HTMLElement>('[data-np="prev"], [data-np="next"]'))
       b.setAttribute('aria-label', stepView(stepOf(b), player.get(), queue, tracks).label);
   };
-  const setPlaying = (i: number | null) => {
-    dock.classList.toggle('is-playing', i !== null);
-    $('[data-np-kicker]').textContent = i === null ? 'Up next' : 'Now playing';
-    for (const fill of dock.querySelectorAll<HTMLElement>('[data-wave-fill]')) {
-      fill.style.transition = 'none';
-      fill.style.clipPath = '';
+  // The played part of the waveform fills over the play: a progress fill, never a scrubber.
+  const fill = (p: Progress | null, jump: boolean) => {
+    const value = `inset(0 ${(1 - (p?.done ?? 0)) * 100}% 0 0)`;
+    for (const w of waves) {
+      const el = w.querySelector<HTMLElement>('[data-wave-fill]')!;
+      if (el.style.clipPath === value) continue;
+      if (jump) {
+        // A new play, a return, or a return from the repository's tab is no slide.
+        el.style.transition = 'none';
+        el.style.clipPath = value;
+        void el.offsetWidth; // commit the jump before the transition comes back
+        el.style.transition = '';
+      } else el.style.clipPath = value;
     }
-    if (i === null) return;
-    // The played part of the waveform fills in step with the load.
-    const fill = waves[i].querySelector<HTMLElement>('[data-wave-fill]')!;
-    requestAnimationFrame(() => {
-      fill.style.transition = `clip-path ${LOAD.drop * 1000}ms linear`;
-      fill.style.clipPath = 'inset(0 0 0 0)';
-    });
+  };
+  // The label above the title, the Play button's name, the waveform and the lyrics read the
+  // play's clock, so the load gives way to the play on the clock, not on an animation.
+  const tick = (jump = false) => {
+    const s = player.get();
+    const p = player.progress();
+    const label = kickerView(s, p);
+    if (kicker.textContent !== label) kicker.textContent = label;
+    if (queueLabel.textContent !== label) queueLabel.textContent = label;
+    const play = playView(s, tracks);
+    for (const b of playButtons) if (b.getAttribute('aria-label') !== play) b.setAttribute('aria-label', play);
+    dock.classList.toggle('is-playing', s.play !== null);
+    fill(p, jump);
+    sing();
+  };
+  // Only a running play needs the clock; idle needs none.
+  let clock = 0;
+  const runClock = () => {
+    if (player.get().play && !clock) clock = window.setInterval(() => tick(), 250);
+    else if (!player.get().play && clock) {
+      clearInterval(clock);
+      clock = 0;
+    }
   };
   player.subscribe((s, before) => {
     if (s.cued !== before.cued) show(s.cued);
-    if (s.play !== before.play) setPlaying(s.play?.i ?? null);
     transport();
+    runClock();
+    tick(true);
   });
+  // A hidden tab's timers are throttled: the fill and the lyrics catch up on return.
+  addEventListener('visibilitychange', () => document.visibilityState === 'visible' && tick(true));
+  addEventListener('pageshow', () => tick(true));
 
   const setShuffle = (on: boolean) => {
     shuffled = on;
@@ -103,7 +133,6 @@ export function mountDock(dock: HTMLElement, tracks: readonly Track[], player: P
     for (const [k, el] of Object.entries(panels)) el.hidden = k !== which;
     toggles.forEach((t) => t.setAttribute('aria-expanded', String(t.dataset.npPanel === which)));
     if (which === 'lyrics') renderLyrics();
-    else clearInterval(karaoke);
     if (which === 'queue') renderQueue();
   };
   toggles.forEach((t) => t.addEventListener('click', () => setOpen(open === t.dataset.npPanel ? null : (t.dataset.npPanel as Panel))));
@@ -111,10 +140,24 @@ export function mountDock(dock: HTMLElement, tracks: readonly Track[], player: P
     if (e.key === 'Escape' && open) setOpen(null);
   });
 
-  // Lyrics: README lines, highlighted one at a time like synced lyrics.
-  let karaoke = 0;
+  // Lyrics: README lines, highlighted one at a time like synced lyrics, on the play's clock:
+  // 2.6 s a line from the play's start. Idle, and under reduced motion, nothing is lit.
+  let sung: HTMLElement[] = [];
+  let lit = -2; // the lit line: -1 for none, -2 before the first reading
+  const sing = () => {
+    if (open !== 'lyrics') return;
+    const p = player.progress();
+    const k = !p || p.phase === 'load' || reducedMotion() ? -1 : Math.min(Math.floor(p.elapsed / LINE_MS), sung.length - 1);
+    if (k === lit) return;
+    lit = k;
+    sung.forEach((li, j) => {
+      li.classList.toggle('past', j < k);
+      li.classList.toggle('now', j === k);
+    });
+    const li = sung[k];
+    if (li) panels.lyrics.scrollTo({ top: li.offsetTop - panels.lyrics.clientHeight / 3, behavior: reducedMotion() ? 'auto' : 'smooth' });
+  };
   const renderLyrics = () => {
-    clearInterval(karaoke);
     const i = cued();
     const t = tracks[i];
     $('[data-lyrics-title]').textContent = `Lyrics · ${trackNo(i)} ${t.name}`;
@@ -129,20 +172,9 @@ export function mountDock(dock: HTMLElement, tracks: readonly Track[], player: P
         return li;
       }),
     );
-    const sung = [...list.querySelectorAll<HTMLElement>('li:not(.tag)')];
-    let k = 0;
-    const tick = () => {
-      sung.forEach((li, j) => {
-        li.classList.toggle('past', j < k);
-        li.classList.toggle('now', j === k);
-      });
-      const li = sung[k];
-      const panel = panels.lyrics;
-      if (li) panel.scrollTo({ top: li.offsetTop - panel.clientHeight / 3, behavior: reducedMotion() ? 'auto' : 'smooth' });
-      k++;
-    };
-    tick();
-    if (!reducedMotion() && sung.length > 1) karaoke = window.setInterval(() => (k < sung.length ? tick() : clearInterval(karaoke)), LINE_MS);
+    sung = [...list.querySelectorAll<HTMLElement>('li:not(.tag)')];
+    lit = -2;
+    sing();
   };
 
   // Queue: the cued track, then next up in play order.
@@ -226,5 +258,13 @@ export function mountDock(dock: HTMLElement, tracks: readonly Track[], player: P
 
   show(cued());
   transport();
+  runClock();
+  tick(true);
+
+  // The page pads and scrolls by the Dock's own height, so nothing focused or scrolled to
+  // lands under the bar or an open panel. --dock-h is the fallback before this runs.
+  const root = document.documentElement;
+  const measure = () => root.style.setProperty('--dock-space', `${dock.getBoundingClientRect().height}px`);
+  new ResizeObserver(measure).observe(dock);
   return { nextAfter: (i: number) => stepFrom(queue, i, 1) };
 }

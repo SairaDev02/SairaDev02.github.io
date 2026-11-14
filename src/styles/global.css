@@ -37,6 +37,9 @@
 html {
   background: var(--bg);
   color: var(--fg);
+  /* Focused elements and scrollIntoView keep clear of the fixed Dock. scripts/dock/dock.ts
+     sets --dock-space to the Dock's measured height: its bar plus any open panel. */
+  scroll-padding-bottom: var(--dock-space, var(--dock-h));
 }
 body {
   margin: 0;

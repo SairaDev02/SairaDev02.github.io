@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Track } from '../../lib/format';
 import { createPlayerState } from '../player-state';
-import { pick, stepView } from './controls';
+import { kickerView, pick, playView, stepView } from './controls';
 
 const LOAD_MS = 1400;
 
@@ -27,6 +27,44 @@ function setup() {
   const advance = (ms: number) => void (t += ms);
   return { player, advance };
 }
+
+describe('kickerView', () => {
+  it('reads Ready to play while nothing plays', () => {
+    const { player } = setup();
+    expect(kickerView(player.get(), player.progress())).toBe('Ready to play');
+  });
+
+  it('names the load, then the play', () => {
+    const { player, advance } = setup();
+    player.play(1);
+    expect(kickerView(player.get(), player.progress())).toBe('Loading · opened in a new tab');
+
+    advance(LOAD_MS);
+    expect(kickerView(player.get(), player.progress())).toBe('Now playing');
+
+    advance(30_000);
+    expect(kickerView(player.get(), player.progress())).toBe('Now playing');
+
+    // The play is over on the clock, and the label goes back with it.
+    player.check();
+    expect(kickerView(player.get(), player.progress())).toBe('Ready to play');
+  });
+});
+
+describe('playView', () => {
+  it('offers to play the Cue while nothing plays', () => {
+    const { player } = setup();
+    player.cue(2);
+    expect(playView(player.get(), tracks)).toBe('Play quiet-notes, opens in a new tab');
+  });
+
+  it('offers to reopen the playing repository', () => {
+    const { player, advance } = setup();
+    player.play(1);
+    advance(LOAD_MS);
+    expect(playView(player.get(), tracks)).toBe('Reopen paper-lantern in a new tab');
+  });
+});
 
 describe('stepView', () => {
   it('names the step by the Queue while nothing plays', () => {

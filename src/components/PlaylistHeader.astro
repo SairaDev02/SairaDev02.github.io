@@ -24,7 +24,7 @@ const languages = [...new Set(repos.map((r) => r.language).filter((l) => l !== n
     </h1>
     <p class="stats">{commits} commits · {languages.join(' / ')} · updated {lastPush}</p>
     <div class="actions">
-      <button type="button" class="play" data-np="play" aria-label="Play the cued repository: opens it">
+      <button type="button" class="play" data-np="play" aria-label="Play the cued repository, opens in a new tab">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"></path></svg>
       </button>
       <button type="button" class="shuffle" data-np="shuffle-play">Shuffle</button>
