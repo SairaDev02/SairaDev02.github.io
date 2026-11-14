@@ -1,5 +1,9 @@
 # AGENTS.md
 
+## Testing
+
+This project is exempt from TDD. Its only automated tests are the Playwright end-to-end tests in `e2e/` (`npm run e2e`); the owner removed the unit tests on purpose. Verify behavior changes by adding or updating an e2e test where one fits, or by checking the rendered site. Keep new tests in `e2e/`.
+
 ## Agent skills
 
 ### Issue tracker
