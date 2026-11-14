@@ -1,6 +1,8 @@
 // The home page as built from e2e/fixtures/github.json. Display order is most recently
 // pushed first: 01 tidepool, 02 paper-lantern, 03 quiet-notes, 04 empty-box.
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
+import { layoutDiscs } from '../src/scripts/player/geometry';
+import { picture, waitForScene } from './picture';
 import { expect, test } from './test';
 
 const dock = (page: Page) => page.getByRole('region', { name: 'Now playing' });
@@ -58,26 +60,55 @@ test.describe('now-playing dock', () => {
     await expect(dock(page).locator('[data-np-sub]')).toHaveText('Rust · cli · audio · synth');
   });
 
-  test('hovering a track cues it in the dock and on the LCD, and the cue sticks', async ({ page, isMobile }) => {
+  test('hovering a track previews it without moving the dock', async ({ page, isMobile }) => {
     test.skip(isMobile, 'no hover on touch screens');
     const row = page.locator('[data-track="1"]');
     await row.hover();
-    await expect(row).toHaveClass(/\bon\b/);
-    await expect(dockTitle(page)).toHaveText('02 paper-lantern');
+    // The row shows the preview wash, not the playing fill.
+    await expect(row).toHaveClass(/\bhov\b/);
+    await expect(row).not.toHaveClass(/\bon\b/);
+    // The faceplate follows the pointer; the Dock's track does not, and neither does the Cue.
     await expect(page.locator('[data-lcd-title]')).toHaveText('paper-lantern');
     await expect(page.locator('[data-lcd-num]')).toHaveText('02');
+    await expect(dockTitle(page)).toHaveText('01 tidepool');
+    await expect(page.locator('[data-track="0"]')).toHaveClass(/\bcued\b/);
+    await expect(page.getByRole('status')).toHaveText('');
 
     await page.mouse.move(0, 0);
-    await expect(row).not.toHaveClass(/\bon\b/);
-    await expect(dockTitle(page)).toHaveText('02 paper-lantern');
+    await expect(row).not.toHaveClass(/\bhov\b/);
+    await expect(page.locator('[data-lcd-title]')).toHaveText('Drag a disc');
+    await expect(dockTitle(page)).toHaveText('01 tidepool');
+  });
+
+  test('hovering a disc previews it without moving the dock', async ({ page, isMobile }) => {
+    test.skip(isMobile, 'no hover on touch screens');
+    await waitForScene(page);
+    const { g, at } = await picture(page);
+    await page.mouse.move(...at(...layoutDiscs(4, g.discArea).slots[2]));
+    await expect(page.locator('[data-lcd-title]')).toHaveText('quiet-notes');
+    await expect(dockTitle(page)).toHaveText('01 tidepool');
+
+    await page.mouse.move(0, 0);
+    await expect(page.locator('[data-lcd-title]')).toHaveText('Drag a disc');
+    await expect(dockTitle(page)).toHaveText('01 tidepool');
   });
 
   test('previous and next step through the queue and wrap round', async ({ page }) => {
-    await page.getByRole('button', { name: 'Previous in queue' }).click();
+    await page.getByRole('button', { name: 'Previous: empty-box' }).click();
     await expect(dockTitle(page)).toHaveText('04 empty-box');
-    await page.getByRole('button', { name: 'Next in queue' }).click();
-    await page.getByRole('button', { name: 'Next in queue' }).click();
+    await page.getByRole('button', { name: 'Next: tidepool' }).click();
+    await expect(dockTitle(page)).toHaveText('01 tidepool');
+    await page.getByRole('button', { name: 'Next: paper-lantern' }).click();
     await expect(dockTitle(page)).toHaveText('02 paper-lantern');
+  });
+
+  test('a Dock step while idle announces the new cue', async ({ page }) => {
+    await page.getByRole('button', { name: 'Next: paper-lantern' }).click();
+    await expect(dockTitle(page)).toHaveText('02 paper-lantern');
+    await expect(page.getByRole('status')).toHaveText('Cued paper-lantern');
+
+    await page.getByRole('button', { name: 'Previous: tidepool' }).click();
+    await expect(page.getByRole('status')).toHaveText('Cued tidepool');
   });
 
   test('shuffle toggles', async ({ page, isMobile }) => {
@@ -88,6 +119,46 @@ test.describe('now-playing dock', () => {
     await expect(shuffle).toHaveAttribute('aria-pressed', 'true');
     await shuffle.click();
     await expect(shuffle).toHaveAttribute('aria-pressed', 'false');
+  });
+});
+
+test.describe('preview and cue marks', () => {
+  const mark = (row: Locator) =>
+    row.evaluate((el) => ({
+      shadow: getComputedStyle(el).boxShadow,
+      background: getComputedStyle(el).backgroundColor,
+    }));
+
+  test('the cued row carries a steady light blue glow box', async ({ page }) => {
+    // DESIGN.md's token, and the one row that carries it while nothing plays.
+    expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--cue').trim())).toBe(
+      '#78a0f5',
+    );
+    const cued = page.locator('[data-track="0"]');
+    await expect(cued).toHaveClass(/\bcued\b/);
+
+    const { shadow, background } = await mark(cued);
+    expect(shadow).toContain('rgb(120, 160, 245)');
+    // A faint fill while idle, not the solid yellow: that one is for the playing row.
+    expect(background).not.toBe('rgb(255, 214, 10)');
+
+    // The marker follows the Cue, and only the cued row has a box.
+    await page.getByRole('button', { name: 'Next: paper-lantern' }).click();
+    await expect(page.locator('[data-track="1"]')).toHaveClass(/\bcued\b/);
+    await expect(cued).not.toHaveClass(/\bcued\b/);
+    expect((await mark(page.locator('[data-track="2"]'))).shadow).toBe('none');
+  });
+
+  test('a previewed row shows the soft yellow wash', async ({ page, isMobile }) => {
+    test.skip(isMobile, 'no hover on touch screens');
+    const row = page.locator('[data-track="1"]');
+    await row.hover();
+    const wash = await row.evaluate((el) => {
+      const before = getComputedStyle(el, '::before');
+      return { color: before.backgroundColor, filter: before.filter };
+    });
+    expect(wash.color).toBe('rgb(255, 214, 10)'); // var(--sun), blurred rather than solid
+    expect(wash.filter).toContain('blur');
   });
 });
 
@@ -109,9 +180,25 @@ test.describe('lyrics panel', () => {
       'https://github.com/SairaDev02/tidepool#readme',
     );
 
-    await page.getByRole('button', { name: 'Next in queue' }).click();
+    await page.getByRole('button', { name: 'Next: paper-lantern' }).click();
     await expect(panel.locator('[data-lyrics-title]')).toHaveText('Lyrics · 02 paper-lantern');
     await expect(panel.getByText('No README yet. This one is an instrumental.')).toBeVisible();
+  });
+
+  test('keeps its place while a row is previewed', async ({ page, isMobile }) => {
+    test.skip(isMobile, 'no hover on touch screens');
+    await page.getByRole('button', { name: 'Lyrics', exact: true }).click();
+    const panel = page.getByRole('region', { name: 'Lyrics: README of the cued repository' });
+    const title = panel.locator('[data-lyrics-title]');
+    await expect(title).toHaveText('Lyrics · 01 tidepool');
+
+    // The highlight moves past the first line on its own, every 2.6 s.
+    const first = panel.locator('[data-lines] li').first();
+    await expect(first).toHaveClass(/\bpast\b/);
+    await page.locator('[data-track="1"]').hover();
+    // A preview leaves the panel where it was: same track, and the highlight is not restarted.
+    await expect(title).toHaveText('Lyrics · 01 tidepool');
+    await expect(first).toHaveClass(/\bpast\b/);
   });
 
   test('closes with Escape', async ({ page }) => {
@@ -142,7 +229,7 @@ test.describe('queue panel', () => {
     // Focus stays on the moved row's button, so keyboard users can keep moving it.
     await expect(panel(page).getByRole('button', { name: 'Move paper-lantern down' })).toBeFocused();
 
-    await page.getByRole('button', { name: 'Next in queue' }).click();
+    await page.getByRole('button', { name: 'Next: quiet-notes' }).click();
     await expect(dockTitle(page)).toHaveText('03 quiet-notes');
   });
 
@@ -192,10 +279,40 @@ test.describe('playing a track', () => {
     await expect(dock(page).locator('[data-np-kicker]')).toHaveText('Now playing');
     await expect(page.locator('[data-dock]')).toHaveClass(/is-playing/);
     await expect(page.locator('[data-lcd-title]')).toHaveText('Loading paper-lantern');
+    // The playing row keeps the solid yellow fill that a preview only washes towards.
+    const playing = page.locator('[data-track="1"]');
+    await expect(playing).toHaveClass(/\bon\b/);
+    expect(await playing.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgb(255, 214, 10)');
+  });
+
+  test('Prev and Next during a play open a new tab and swap the disc', async ({ page, context }) => {
+    const first = context.waitForEvent('page');
+    await page.locator('[data-track="0"]').click();
+    await (await first).waitForURL('https://github.com/SairaDev02/tidepool');
+    // A press during the 1.4 s load is ignored, so wait for the play itself.
+    await expect(page.locator('[data-lcd-title]')).toHaveText('tidepool');
+
+    // A preview during a play leaves the faceplate, and the Dock, on the play.
+    await page.locator('[data-track="2"]').hover();
+    await expect(page.locator('[data-lcd-title]')).toHaveText('tidepool');
+    await expect(dockTitle(page)).toHaveText('01 tidepool');
+
+    const next = context.waitForEvent('page');
+    await page.getByRole('button', { name: 'Play next: paper-lantern, opens in a new tab' }).click();
+    await (await next).waitForURL('https://github.com/SairaDev02/paper-lantern');
+    await expect(dockTitle(page)).toHaveText('02 paper-lantern');
+    await expect(page.locator('[data-lcd-title]')).toHaveText('Loading paper-lantern');
+
+    await expect(page.locator('[data-lcd-title]')).toHaveText('paper-lantern');
+    const prev = context.waitForEvent('page');
+    await page.getByRole('button', { name: 'Play previous: tidepool, opens in a new tab' }).click();
+    await (await prev).waitForURL('https://github.com/SairaDev02/tidepool');
+    await expect(dockTitle(page)).toHaveText('01 tidepool');
+    expect(new URL(page.url()).pathname).toBe('/');
   });
 
   test('the playlist play button opens the cued repository in a new tab', async ({ page, context }) => {
-    await page.getByRole('button', { name: 'Next in queue' }).click();
+    await page.getByRole('button', { name: 'Next: paper-lantern' }).click();
     const popup = context.waitForEvent('page');
     await page.getByRole('button', { name: 'Play the cued repository: opens it' }).click();
     await (await popup).waitForURL('https://github.com/SairaDev02/paper-lantern');

@@ -2,38 +2,13 @@
 // clock, then returns to its slot. Built from e2e/fixtures/github.json, whose display
 // order is 01 tidepool, 02 paper-lantern, 03 quiet-notes, 04 empty-box.
 import type { Page } from '@playwright/test';
-import { NARROW, WIDE, layoutDiscs } from '../src/scripts/player/geometry';
+import { layoutDiscs } from '../src/scripts/player/geometry';
+import { picture, waitForScene } from './picture';
 import { expect, test } from './test';
 
 const REPO = 'https://github.com/SairaDev02/';
 const playButton = (page: Page) => page.getByRole('button', { name: 'Play: open the cued repository' });
 const status = (page: Page) => page.getByRole('status');
-
-/** The picture's grid (the wide one, or the portrait one on phones) mapped to CSS px. */
-const picture = async (page: Page) => {
-  const canvas = page.locator('[data-player] canvas');
-  await canvas.scrollIntoViewIfNeeded();
-  const grid = await canvas.evaluate((c: HTMLCanvasElement) => ({ w: c.width, h: c.height }));
-  const g = grid.w === NARROW.W ? NARROW : WIDE;
-  const box = (await canvas.boundingBox())!;
-  const at = (x: number, y: number) => [box.x + (x / g.W) * box.width, box.y + (y / g.H) * box.height] as const;
-  return { g, at };
-};
-
-/** Waits for the scene: until its first frame is drawn, the canvas ignores presses. */
-const waitForScene = async (page: Page) => {
-  const canvas = page.locator('[data-player] canvas');
-  await expect
-    .poll(() =>
-      canvas.evaluate((c: HTMLCanvasElement) => {
-        const d = c.getContext('2d')!.getImageData(0, 0, c.width, c.height).data;
-        const seen = new Set<number>();
-        for (let k = 0; k < d.length && seen.size < 3; k += 4 * 97) seen.add((d[k] << 16) | (d[k + 1] << 8) | d[k + 2]);
-        return seen.size;
-      }),
-    )
-    .toBeGreaterThan(1);
-};
 
 test.describe('opening a repository', () => {
   test.beforeEach(async ({ page }) => {
@@ -53,7 +28,7 @@ test.describe('opening a repository', () => {
   });
 
   test("the Dock's Play opens the cued repository in a new tab", async ({ page, context }) => {
-    await page.getByRole('button', { name: 'Next in queue' }).click();
+    await page.getByRole('button', { name: 'Next: paper-lantern' }).click();
     const popup = context.waitForEvent('page');
     await playButton(page).click();
     await (await popup).waitForURL(`${REPO}paper-lantern`);
@@ -109,6 +84,39 @@ test.describe('a play on the clock', () => {
     await expect(page.locator('[data-np-kicker]')).toHaveText('Up next');
     await expect(page.locator('[data-np-title]')).toHaveText('02 paper-lantern');
     await expect(page.locator('[data-lcd-title]')).toHaveText('Drag a disc');
+  });
+
+  test('a return follows the Queue order the panel set', async ({ page }) => {
+    // Move paper-lantern down: the next track after tidepool is now quiet-notes.
+    await page.getByRole('button', { name: 'Queue', exact: true }).click();
+    await page.getByRole('button', { name: 'Move paper-lantern down' }).click();
+    await expect(page.getByRole('button', { name: 'Next: quiet-notes' })).toBeVisible();
+
+    await playButton(page).click();
+    await page.clock.fastForward(1_400 + 30_100);
+    // The disc came home and the Cue moved along the Queue, not along the track numbers.
+    await expect(page.locator('[data-dock]')).not.toHaveClass(/is-playing/);
+    await expect(page.locator('[data-np-title]')).toHaveText('03 quiet-notes');
+    await expect(page.getByRole('button', { name: 'Next: paper-lantern' })).toBeVisible();
+  });
+
+  test('a return follows the Queue order Shuffle set', async ({ page, isMobile }) => {
+    test.skip(isMobile, 'the dock hides shuffle on phones');
+    // A fixed draw, so the shuffled order is the same on every run.
+    await page.addInitScript(() => {
+      Math.random = () => 0.1;
+    });
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Shuffle the queue' }).click();
+    // Next names the Queue's first track after the Cue; a return must land on it.
+    const label = await page.getByRole('button', { name: /^Next: / }).getAttribute('aria-label');
+    const name = label!.replace('Next: ', '');
+    expect(name).not.toBe('paper-lantern'); // the shuffled order, not the track numbers
+
+    await playButton(page).click();
+    await page.clock.fastForward(1_400 + 30_100);
+    await expect(page.locator('[data-dock]')).not.toHaveClass(/is-playing/);
+    await expect(page.locator('[data-np-title]')).toContainText(name);
   });
 
   test('a return from a hidden tab finds the disc home', async ({ page }) => {
