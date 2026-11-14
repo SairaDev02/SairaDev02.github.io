@@ -65,7 +65,7 @@ describe('pick', () => {
     const open = vi.fn();
     pick(2, player, open);
     expect(open).not.toHaveBeenCalled();
-    expect(player.get()).toEqual({ cued: 2, hover: -1, play: null });
+    expect(player.get()).toEqual({ cued: 2, hover: -1, play: null, blocked: null });
   });
 
   it('opens the repository and plays during a play', () => {

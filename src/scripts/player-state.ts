@@ -5,6 +5,9 @@
 //   cued   the Dock's track, which its Play button plays.
 //   play   the disc in the player and when its press happened (null for an empty tray).
 //          A play loads for loadMs, then plays for playMs, then returns to its slot.
+//   blocked the track whose tab the browser refused to open (null for none). It is the
+//          faceplate's to show and is cleared by the next Preview or play, which is why
+//          it lives here: one writer, no copy per component.
 //
 // A play's phase and progress come from the wall clock, never from frames or chained
 // timers: the repository opens in a new tab in front of this one, where timers are
@@ -20,6 +23,7 @@ export interface PlayerSnapshot {
   cued: number;
   hover: number;
   play: Play | null;
+  blocked: number | null;
 }
 
 /** Why the tray changed, for listeners that send a disc back. */
@@ -44,6 +48,8 @@ export interface PlayerState {
   subscribe(fn: Listener): void;
   hover(i: number): void;
   cue(i: number): void;
+  /** Records a blocked tab. The next Preview or play clears it. */
+  block(i: number): void;
   /** Starts a play. The caller has already opened the repository's tab. */
   play(i: number): void;
   eject(how: 'eject' | 'drag-out'): void;
@@ -63,12 +69,12 @@ export interface PlayerOptions {
 
 export function createPlayerState(o: PlayerOptions): PlayerState {
   const now = o.now ?? (() => Date.now());
-  let s: PlayerSnapshot = { cued: 0, hover: -1, play: null };
+  let s: PlayerSnapshot = { cued: 0, hover: -1, play: null, blocked: null };
   const listeners: Listener[] = [];
   let timer: ReturnType<typeof setTimeout> | undefined;
 
   const set = (next: PlayerSnapshot, why?: Change) => {
-    if (next.cued === s.cued && next.hover === s.hover && next.play === s.play) return;
+    if (next.cued === s.cued && next.hover === s.hover && next.play === s.play && next.blocked === s.blocked) return;
     const before = s;
     s = next;
     for (const fn of listeners) fn(s, before, why);
@@ -95,11 +101,16 @@ export function createPlayerState(o: PlayerOptions): PlayerState {
     isLoading,
     subscribe: (fn) => void listeners.push(fn),
     hover(i) {
-      set({ ...s, hover: i });
+      // A Preview, or the drag that starts on a disc, is the next gesture after a blocked
+      // tab; pointing at the disc it already shows is not a new one.
+      set({ ...s, hover: i, blocked: i >= 0 && i !== s.hover ? null : s.blocked });
     },
     cue(i) {
       if (isLoading()) return;
       set({ ...s, cued: i });
+    },
+    block(i) {
+      set({ ...s, blocked: i });
     },
     play(i) {
       // A press during a load would stack plays; reopening the playing repository is not
@@ -107,7 +118,7 @@ export function createPlayerState(o: PlayerOptions): PlayerState {
       if (isLoading() || s.play?.i === i) return;
       const why = s.play ? 'swap' : undefined;
       clearTimeout(timer);
-      set({ ...s, cued: i, play: { i, startedAt: now() } }, why);
+      set({ ...s, cued: i, blocked: null, play: { i, startedAt: now() } }, why);
       // Best effort only: a hidden tab throttles timers, so visibilitychange, pageshow and
       // focus also call check().
       timer = setTimeout(check, o.loadMs + o.playMs + 50);
