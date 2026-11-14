@@ -33,7 +33,10 @@ test.describe('page content', () => {
   });
 
   test('draws the CD player picture', async ({ page }) => {
-    const canvas = page.getByRole('img', { name: /A CD player in a cloudy sky beside 4 discs/ });
+    // The alt text says what a disc does: opens the repository in a new tab, plays 30 s.
+    const canvas = page.getByRole('img', {
+      name: /A CD player in a cloudy sky beside 4 discs, one per public repository\. Clicking a disc or dragging it into the player opens that repository in a new tab and plays it for 30 seconds; the track list below does the same\./,
+    });
     await expect(canvas).toBeVisible();
     // More than one colour on the canvas means the scene rendered.
     await expect
@@ -76,7 +79,7 @@ test.describe('now-playing dock', () => {
 
     await page.mouse.move(0, 0);
     await expect(row).not.toHaveClass(/\bhov\b/);
-    await expect(page.locator('[data-lcd-title]')).toHaveText('Drag a disc');
+    await expect(page.locator('[data-lcd-title]')).toHaveText('Pick a disc');
     await expect(dockTitle(page)).toHaveText('01 tidepool');
   });
 
@@ -86,11 +89,23 @@ test.describe('now-playing dock', () => {
     const { g, at } = await picture(page);
     await page.mouse.move(...at(...layoutDiscs(4, g.discArea).slots[2]));
     await expect(page.locator('[data-lcd-title]')).toHaveText('quiet-notes');
+    await expect(page.locator('[data-lcd-info]')).toContainText('Text · updated 2026.07.01');
     await expect(dockTitle(page)).toHaveText('01 tidepool');
+    // A preview is never announced.
+    await expect(page.getByRole('status')).toHaveText('');
 
     await page.mouse.move(0, 0);
-    await expect(page.locator('[data-lcd-title]')).toHaveText('Drag a disc');
+    await expect(page.locator('[data-lcd-title]')).toHaveText('Pick a disc');
     await expect(dockTitle(page)).toHaveText('01 tidepool');
+    await expect(page.getByRole('status')).toHaveText('');
+  });
+
+  test('hovering the faceplate announces nothing and changes nothing', async ({ page }) => {
+    await page.locator('[data-lcd]').hover();
+    await expect(page.locator('[data-lcd-title]')).toHaveText('Pick a disc');
+    await expect(page.getByRole('status')).toHaveText('');
+    // The faceplate is a quiet view: the page's status is its one live region.
+    await expect(page.locator('[aria-live]')).toHaveCount(0);
   });
 
   test('previous and next step through the queue and wrap round', async ({ page }) => {

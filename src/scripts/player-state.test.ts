@@ -19,22 +19,22 @@ function setup() {
 
 describe('player state', () => {
   it('cues the first track at start, with nothing previewed or playing', () => {
-    expect(setup().player.get()).toEqual({ cued: 0, hover: -1, play: null });
+    expect(setup().player.get()).toEqual({ cued: 0, hover: -1, play: null, blocked: null });
   });
 
   it('previews what is hovered without moving the cue', () => {
     const { player } = setup();
     player.hover(2);
-    expect(player.get()).toEqual({ cued: 0, hover: 2, play: null });
+    expect(player.get()).toEqual({ cued: 0, hover: 2, play: null, blocked: null });
     player.hover(-1);
-    expect(player.get()).toEqual({ cued: 0, hover: -1, play: null });
+    expect(player.get()).toEqual({ cued: 0, hover: -1, play: null, blocked: null });
   });
 
   it('moves the cue without touching the preview', () => {
     const { player } = setup();
     player.hover(2);
     player.cue(3);
-    expect(player.get()).toEqual({ cued: 3, hover: 2, play: null });
+    expect(player.get()).toEqual({ cued: 3, hover: 2, play: null, blocked: null });
   });
 
   it('has no progress while nothing plays', () => {
@@ -46,7 +46,7 @@ describe('player state', () => {
   it('loads, then plays, then returns at 30 s and cues the next track', () => {
     const { player, advance } = setup();
     player.play(2);
-    expect(player.get()).toEqual({ cued: 2, hover: -1, play: { i: 2, startedAt: 0 } });
+    expect(player.get()).toEqual({ cued: 2, hover: -1, play: { i: 2, startedAt: 0 }, blocked: null });
     expect(player.progress()).toEqual({ phase: 'load', elapsed: 0, done: 0 });
     expect(player.isLoading()).toBe(true);
 
@@ -62,7 +62,7 @@ describe('player state', () => {
     expect(player.get().play).not.toBeNull();
     advance(1);
     player.check();
-    expect(player.get()).toEqual({ cued: 3, hover: -1, play: null });
+    expect(player.get()).toEqual({ cued: 3, hover: -1, play: null, blocked: null });
   });
 
   it('tells subscribers why the tray changed', () => {
@@ -73,8 +73,8 @@ describe('player state', () => {
     advance(LOAD_MS + PLAY_MS);
     player.check();
     expect(seen).toHaveBeenLastCalledWith(
-      { cued: 2, hover: -1, play: null },
-      { cued: 1, hover: -1, play: { i: 1, startedAt: 0 } },
+      { cued: 2, hover: -1, play: null, blocked: null },
+      { cued: 1, hover: -1, play: { i: 1, startedAt: 0 }, blocked: null },
       'return',
     );
   });
@@ -97,7 +97,7 @@ describe('player state', () => {
     advance(LOAD_MS - 1);
     player.play(2);
     player.cue(3);
-    expect(player.get()).toEqual({ cued: 1, hover: -1, play: { i: 1, startedAt: 0 } });
+    expect(player.get()).toEqual({ cued: 1, hover: -1, play: { i: 1, startedAt: 0 }, blocked: null });
   });
 
   it('keeps a running play when its own repository reopens', () => {
@@ -122,7 +122,7 @@ describe('player state', () => {
     player.play(2);
     advance(LOAD_MS + 1000);
     player.eject('eject');
-    expect(player.get()).toEqual({ cued: 2, hover: -1, play: null });
+    expect(player.get()).toEqual({ cued: 2, hover: -1, play: null, blocked: null });
     expect(seen).toHaveBeenLastCalledWith(expect.anything(), expect.anything(), 'eject');
   });
 
@@ -144,6 +144,31 @@ describe('player state', () => {
     player.play(1);
     player.eject('drag-out');
     expect(player.get().play).toEqual({ i: 1, startedAt: 0 });
+  });
+
+  it('records the disc whose tab the browser blocked', () => {
+    const { player } = setup();
+    player.block(2);
+    expect(player.get()).toEqual({ cued: 0, hover: -1, play: null, blocked: 2 });
+  });
+
+  it('keeps a blocked tab until the next preview, drag or play', () => {
+    const { player } = setup();
+    // The blocked press left the pointer on the disc it pressed: that is not a new preview.
+    player.hover(2);
+    player.block(2);
+    player.hover(2);
+    expect(player.get().blocked).toBe(2);
+    // Leaving the disc is not a preview either.
+    player.hover(-1);
+    expect(player.get().blocked).toBe(2);
+    // A drag starts on a disc and previews it.
+    player.hover(3);
+    expect(player.get().blocked).toBeNull();
+
+    player.block(3);
+    player.play(1);
+    expect(player.get().blocked).toBeNull();
   });
 
   it('is safe to check any number of times', () => {
