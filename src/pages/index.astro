@@ -81,8 +81,10 @@ const ogImage = await getImage({ src: ogCard, format: 'png' });
   }
   .skip:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
   .skip:focus { transform: none; }
-  /* Where the skip link lands: a ring around the track list makes the jump visible. */
-  .playlist:focus { outline: 3px solid var(--accent); outline-offset: 4px; }
+  /* Where the skip link lands: a ring around the track list makes the jump visible.
+     focus-visible, not focus: a click on plain text inside the list also focuses it
+     (tabindex="-1"), and that should draw no ring. */
+  .playlist:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
   /* Pale sky with soft drifting clouds behind everything. The clouds sit on an oversized
      layer that drifts by transform, so the compositor animates it without repainting. */
   .sky {

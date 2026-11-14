@@ -82,7 +82,17 @@ test.describe('skip link', () => {
     await page.keyboard.press('Enter');
     const repositories = page.getByRole('region', { name: 'Repositories' });
     await expect(repositories).toBeFocused();
+    await expect(repositories).toHaveCSS('outline-style', 'solid');
     await expect(repositories.locator('[data-track]')).toHaveCount(4);
+  });
+
+  test('rings the track list only when the skip link moves focus there, not on a click', async ({ page }) => {
+    await page.goto('/');
+    const repositories = page.getByRole('region', { name: 'Repositories' });
+    // A click on plain text inside the list focuses the list itself (tabindex="-1").
+    await repositories.getByText('Public playlist · 4 repositories').click();
+    await expect(repositories).toBeFocused();
+    await expect(repositories).toHaveCSS('outline-style', 'none');
   });
 
   test('is left off pages with nothing to skip to', async ({ page }) => {
