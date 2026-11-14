@@ -1,4 +1,4 @@
-// Play order for the now-playing dock: a permutation of track indices. "Next up" is
+// Play order for the now-playing dock: a permutation of track indices. Up next is
 // everything after the cued track, wrapping round, so prev/next follow the queue.
 
 export type Queue = readonly number[];

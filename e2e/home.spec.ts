@@ -482,4 +482,22 @@ test.describe('the Dock clears the page', () => {
     await expect(row).toBeInViewport();
     expect(await clearance(page, row)).toBeGreaterThan(-0.5);
   });
+
+  test('a play brings the picture back above the Dock', async ({ page }) => {
+    await page.addInitScript(() => {
+      window.open = (() => ({ opener: null })) as unknown as typeof window.open;
+    });
+    // A short window, so the page can scroll the picture out of sight before the play, and
+    // tall enough that the picture fits in the space the Dock leaves above it.
+    const [w] = await page.evaluate(() => [innerWidth] as const);
+    await page.setViewportSize({ width: w, height: 700 });
+    await page.reload();
+    await page.mouse.wheel(0, 20_000);
+    const canvas = page.locator('[data-player] canvas');
+    await expect(canvas).not.toBeInViewport();
+
+    await dockPlay(page).click();
+    // The picture scrolls into view, and the Dock's height keeps its bottom edge clear.
+    await expect.poll(() => clearance(page, canvas)).toBeGreaterThan(-0.5);
+  });
 });
