@@ -220,7 +220,7 @@ test.describe('nothing is blocked', () => {
     await watchPolicy(page);
     // The tab a play opens is another document; the page that plays is the one under test.
     await page.addInitScript(() => {
-      window.open = (() => ({ opener: null })) as unknown as typeof window.open;
+      Object.defineProperty(window, 'open', { configurable: true, writable: true, value: () => ({ opener: null }) });
     });
     await page.goto('/');
     const errors = policyErrors(page);

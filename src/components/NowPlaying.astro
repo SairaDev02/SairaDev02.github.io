@@ -2,6 +2,7 @@
 // Fixed now-playing dock: cued track, transport, a commit-waveform progress fill, and the
 // Lyrics and Queue panels that open above the bar. Behaviour lives in scripts/dock/dock.ts.
 import type { Repo } from '../lib/github';
+import { IDLE_KICKER } from '../scripts/dock/controls';
 import Wave from './Wave.astro';
 
 interface Props {
@@ -31,7 +32,7 @@ const { repos } = Astro.props;
         >
       </button>
     </header>
-    <p class="small-label q-label" data-q-kicker>Ready to play</p>
+    <p class="small-label q-label" data-q-kicker>{IDLE_KICKER}</p>
     <ol class="q-list" data-q-now></ol>
     <p class="small-label q-label">Next in queue</p>
     <ol class="q-list" data-q-next></ol>
@@ -52,7 +53,7 @@ const { repos } = Astro.props;
     <div class="track">
       <span class="disc" aria-hidden="true"></span>
       <div class="meta">
-        <span class="small-label" data-np-kicker>Ready to play</span>
+        <span class="small-label" data-np-kicker>{IDLE_KICKER}</span>
         <b class="title" data-np-title></b>
         <span class="sub" data-np-sub></span>
       </div>
@@ -209,10 +210,11 @@ const { repos } = Astro.props;
     box-shadow: 0 0 0 1px var(--accent), 0 0 18px rgb(255 214 10 / 0.6);
   }
   .ctrl .play:hover { color: var(--on-sun); transform: scale(1.06); }
-  /* A running play turns Play into Reopen: the tab is already open. */
-  .play .i-reopen { display: none; }
-  .dock:global(.is-playing) .ctrl .play .i-play { display: none; }
-  .dock:global(.is-playing) .ctrl .play .i-reopen { display: block; }
+  /* A running play turns Play into Reopen: the tab is already open. The class arrives with
+     the button's name (dock.ts), so its glyph and its name always agree. */
+  .ctrl .play .i-reopen { display: none; }
+  .ctrl .play:global(.is-reopen) .i-play { display: none; }
+  .ctrl .play:global(.is-reopen) .i-reopen { display: block; }
   @media (max-width: 599px) {
     .ctrl { gap: 2px; }
     .ctrl .shuffle { display: none; }
