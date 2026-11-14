@@ -43,3 +43,7 @@ _Avoid_: stop, pause
 
 **Return**:
 The disc going back from the tray when a play ends.
+
+**Blocked tab**:
+A tab the browser refused to open: its repository never plays, and the faceplate says so until the next Preview, drag or play.
+_Avoid_: popup
