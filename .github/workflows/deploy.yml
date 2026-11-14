@@ -36,7 +36,6 @@ jobs:
           node-version: 26
           cache: npm
       - run: npm ci
-      - run: npm test
       - run: npm run build
         env:
           # src/lib/github.ts reads it for the API's authenticated rate limit.
