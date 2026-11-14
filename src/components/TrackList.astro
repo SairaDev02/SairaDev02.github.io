@@ -127,6 +127,21 @@ const max = Math.max(1, ...repos.flatMap((r) => r.wave));
   .list li { position: relative; }
   .list .row:global(.cued) { box-shadow: 0 0 0 1px rgb(120 160 245 / 0.9), 0 0 22px 4px rgb(120 160 245 / 0.55); }
   .list .row:global(.cued:not(.on)) { background: rgb(169 195 246 / 0.35); }
+  /* PROTOTYPE: a preview (hover or focus) shows a soft, blurred yellow wash behind the row
+     instead of the solid fill, which stays for the playing row. */
+  .list .row { position: relative; isolation: isolate; }
+  .list .row:global(.hov) { background: transparent; }
+  .list .row:global(.hov)::before {
+    content: '';
+    position: absolute;
+    inset: 4px 8px;
+    z-index: -1;
+    border-radius: 14px;
+    background: var(--sun);
+    opacity: 0.6;
+    filter: blur(12px);
+    pointer-events: none;
+  }
   .list :global(.proto-row-eject) {
     position: absolute;
     right: 8px;

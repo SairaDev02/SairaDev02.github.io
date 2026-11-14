@@ -49,7 +49,8 @@ const markRows = () => {
   const s = player.get();
   for (const a of rows) {
     const i = Number(a.dataset.track);
-    a.classList.toggle('on', i === s.hover || i === s.play?.i);
+    a.classList.toggle('on', i === s.play?.i);
+    a.classList.toggle('hov', i === s.hover && i !== s.play?.i);
     a.classList.toggle('cued', i === s.cued);
   }
 };
