@@ -6,7 +6,7 @@ This project is exempt from TDD. Its only automated tests are the Playwright end
 
 ## Components
 
-Build every component from native HTML, CSS and JavaScript: an `.astro` file with semantic elements and a scoped `<style>`, with any behaviour in TypeScript under `src/scripts/`. Start from native elements (`<button>`, `<dialog>`, `popover`, `<details>`) and extend the shared components, such as `src/components/Button.astro`. The site ships no UI framework, CSS framework or component library (React, Tailwind, shadcn/ui and the like): the owner keeps it to plain web platform code.
+Build every component from native HTML, CSS and JavaScript: an `.astro` file with semantic elements and a scoped `<style>`, with any behaviour in TypeScript under `src/scripts/`. Start from native elements (`<button>`, `<dialog>`, `popover`, `<details>`) and extend the shared components, such as `src/components/Button.astro`. The site ships no UI framework, CSS framework or component library (React, Tailwind, shadcn/ui and the like): markup, styling and interface behaviour stay plain web platform code. Rendering libraries that draw into a `<canvas>`, such as three.js, are allowed.
 
 ## Agent skills
 
