@@ -1,0 +1,119 @@
+---
+// The site's button: a native <button type="button">, or an <a> when given an href. Any
+// other attribute (data-*, aria-*, disabled) passes through to that element.
+//
+// Variants:
+// - sun: a round yellow fill for the primary action (Play). Sizes md (40px) and lg (56px).
+// - ghost: a round, transparent icon button. Sizes xs (26px), sm (30px) and md (32px).
+//   Its colours come from custom properties, so a container can retint every ghost inside
+//   it (the Queue panel does): --btn-fg, --btn-hover-fg, --btn-hover-bg, and --btn-on-fg
+//   with --btn-on-bg for the pressed or expanded state.
+// - outline: a text pill with a hairline border.
+// - solid: a text pill filled with the accent colour.
+//
+// The pages carry no style attributes (see the CSP in astro.config.mjs), so sizes are
+// classes, never inline styles. A parent restyles a Button through :global(.its-class).
+import type { HTMLAttributes } from 'astro/types';
+
+type Common = {
+  class?: string;
+} & (
+  | { variant: 'sun'; size: 'md' | 'lg' }
+  | { variant: 'ghost'; size: 'xs' | 'sm' | 'md' }
+  | { variant: 'outline' | 'solid'; size?: never }
+);
+type Props = Common & (Omit<HTMLAttributes<'button'>, 'class' | 'type'> | (Omit<HTMLAttributes<'a'>, 'class' | 'type'> & { href: string }));
+
+const { variant, size, class: cls, ...rest } = Astro.props;
+const classes = ['btn', variant, size, cls];
+---
+
+{
+  'href' in rest && rest.href !== undefined ? (
+    <a class:list={classes} {...rest}>
+      <slot />
+    </a>
+  ) : (
+    <button type="button" class:list={classes} {...rest}>
+      <slot />
+    </button>
+  )
+}
+
+<style>
+  .btn {
+    all: unset;
+    cursor: pointer;
+  }
+  /* all: unset outranks the global :focus-visible ring, so each button restates it. */
+  .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+  /* ---------- round: sun and ghost ---------- */
+  .sun,
+  .ghost {
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+  }
+  .sun :global(svg),
+  .ghost :global(svg) { width: 18px; height: 18px; }
+  .sun.md:focus-visible,
+  .ghost:focus-visible { outline-offset: 2px; }
+
+  .sun {
+    background: var(--sun);
+    color: var(--on-sun);
+  }
+  .sun.md {
+    width: 40px;
+    height: 40px;
+    box-shadow: 0 0 0 1px var(--accent), 0 0 18px rgb(255 214 10 / 0.6);
+  }
+  .sun.md:hover { transform: scale(1.06); }
+  .sun.lg {
+    width: 56px;
+    height: 56px;
+    box-shadow: 0 0 0 1px var(--accent), 0 10px 28px -8px rgb(255 214 10 / 0.9);
+  }
+  .sun.lg :global(svg) { width: 24px; height: 24px; }
+  .sun.lg:hover { transform: scale(1.05); }
+
+  .ghost { color: var(--btn-fg, var(--fg)); }
+  .ghost.xs { width: 26px; height: 26px; }
+  .ghost.sm { width: 30px; height: 30px; }
+  .ghost.md { width: 32px; height: 32px; }
+  .ghost:hover {
+    color: var(--btn-hover-fg, var(--accent));
+    background: var(--btn-hover-bg, transparent);
+  }
+  .ghost[aria-pressed='true'],
+  .ghost[aria-expanded='true'] {
+    color: var(--btn-on-fg, var(--accent));
+    background: var(--btn-on-bg, rgb(255 214 10 / 0.55));
+  }
+
+  /* ---------- pills: outline and solid ---------- */
+  .outline {
+    font: 500 13px/1 var(--ui);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 12px 18px;
+    border-radius: 999px;
+    border: 1px solid var(--line-strong);
+    color: var(--accent);
+  }
+  .outline:hover { background: var(--sun); color: var(--on-sun); border-color: var(--sun); }
+
+  .solid {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 20px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: var(--on-accent);
+    font: 400 14px/1 var(--ui);
+  }
+  .solid:hover,
+  .solid:focus-visible { background: var(--sun); color: var(--on-sun); }
+</style>

@@ -3,6 +3,7 @@
 // and no JSON-LD, so a crawler never indexes it; the sitemap leaves it out as well. It
 // renders no repository data, so the header has no last-push readout.
 import BaseLayout from '../layouts/BaseLayout.astro';
+import Button from '../components/Button.astro';
 import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import { SITE } from '../lib/site';
@@ -19,7 +20,7 @@ const description =
         <p class="label">404 · Off the playlist</p>
         <h1>Track not found</h1>
         <p class="copy">No track at this address. It may have moved, or the link may be mistyped.</p>
-        <a class="back" href="/">Back to the playlist</a>
+        <Button variant="solid" href="/">Back to the playlist</Button>
       </div>
     </main>
     <SiteFooter />
@@ -67,20 +68,4 @@ const description =
     color: var(--muted);
   }
   .card .copy { margin-bottom: 24px; }
-  .back {
-    display: inline-flex;
-    align-items: center;
-    min-height: 44px;
-    padding: 0 20px;
-    border-radius: 999px;
-    background: var(--accent);
-    color: var(--on-accent);
-    font: 400 14px/1 var(--ui);
-    text-decoration: none;
-  }
-  .back:hover,
-  .back:focus-visible {
-    background: var(--sun);
-    color: var(--on-sun);
-  }
 </style>

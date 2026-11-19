@@ -3,6 +3,8 @@
 // Lyrics and Queue panels that open above the bar. Behaviour lives in scripts/dock/dock.ts.
 import type { Repo } from '../lib/github';
 import { IDLE_KICKER } from '../scripts/dock/controls';
+import Button from './Button.astro';
+import PlayButton from './PlayButton.astro';
 import Wave from './Wave.astro';
 
 interface Props {
@@ -25,12 +27,12 @@ const { repos } = Astro.props;
       <span class="panel-title">Queue</span>
       <span class="small-label">Drag ⠿ or use ↑ ↓ to reorder</span>
       <!-- Under 600 px the bar has no room for Shuffle, so the panel's header carries it. -->
-      <button type="button" class="q-shuffle" data-np="shuffle" aria-pressed="false" aria-label="Shuffle the queue">
+      <Button variant="ghost" size="sm" class="q-shuffle" data-np="shuffle" aria-pressed="false" aria-label="Shuffle the queue">
         <svg viewBox="0 0 24 24" aria-hidden="true"
           ><path d="M3 7h4l10 10h4M3 17h4l3-3M14 10l3-3h4M18 4l3 3-3 3M18 14l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.8"
           ></path></svg
         >
-      </button>
+      </Button>
     </header>
     <p class="small-label q-label" data-q-kicker>{IDLE_KICKER}</p>
     <ol class="q-list" data-q-now></ol>
@@ -42,8 +44,8 @@ const { repos } = Astro.props;
         <span class="q-num" data-q-num></span>
         <button type="button" class="q-pick" data-q-pick><b data-q-name></b><small data-q-meta></small></button>
         <span class="q-move" data-q-move>
-          <button type="button" data-move="-1">↑</button>
-          <button type="button" data-move="1">↓</button>
+          <Button variant="ghost" size="xs" data-move="-1">↑</Button>
+          <Button variant="ghost" size="xs" data-move="1">↓</Button>
         </span>
       </li>
     </template>
@@ -61,28 +63,23 @@ const { repos } = Astro.props;
 
     <div class="center">
       <div class="ctrl">
-        <button type="button" class="shuffle" data-np="shuffle" aria-pressed="false" aria-label="Shuffle the queue">
+        <Button variant="ghost" size="md" class="shuffle" data-np="shuffle" aria-pressed="false" aria-label="Shuffle the queue">
           <svg viewBox="0 0 24 24" aria-hidden="true"
             ><path d="M3 7h4l10 10h4M3 17h4l3-3M14 10l3-3h4M18 4l3 3-3 3M18 14l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.8"
             ></path></svg
           >
-        </button>
-        <button type="button" data-np="prev" aria-label="Previous track">
+        </Button>
+        <Button variant="ghost" size="md" data-np="prev" aria-label="Previous track">
           <svg viewBox="0 0 24 24" aria-hidden="true"
             ><path d="M6 5v14M19 5 8 12l11 7z" fill="currentColor" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path></svg
           >
-        </button>
-        <button type="button" data-np="play" class="play" aria-label="Play the cued repository, opens in a new tab">
-          <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"></path></svg>
-          <svg class="i-reopen" viewBox="0 0 24 24" aria-hidden="true"
-            ><path d="M7 17 17 7M9 7h8v8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg
-          >
-        </button>
-        <button type="button" data-np="next" aria-label="Next track">
+        </Button>
+        <PlayButton size="md" />
+        <Button variant="ghost" size="md" data-np="next" aria-label="Next track">
           <svg viewBox="0 0 24 24" aria-hidden="true"
             ><path d="M18 5v14M5 5l11 7-11 7z" fill="currentColor" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path></svg
           >
-        </button>
+        </Button>
       </div>
       <div class="scrub">
         <span class="t" data-np-first></span>
@@ -109,13 +106,13 @@ const { repos } = Astro.props;
         <span class="small-label">lifetime · first → last commit</span>
       </div>
       <div class="tools">
-        <button type="button" data-np-panel="lyrics" aria-expanded="false" aria-controls="np-lyrics" aria-label="Lyrics">
+        <Button variant="ghost" size="md" data-np-panel="lyrics" aria-expanded="false" aria-controls="np-lyrics" aria-label="Lyrics">
           <svg viewBox="0 0 24 24" aria-hidden="true"
             ><path d="M4 6h10M4 11h10M4 16h6M17 4v11.5a2.5 2.5 0 1 1-2-2.45" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
             ></path></svg
           >
-        </button>
-        <button type="button" data-np-panel="queue" aria-expanded="false" aria-controls="np-queue" aria-label="Queue">
+        </Button>
+        <Button variant="ghost" size="md" data-np-panel="queue" aria-expanded="false" aria-controls="np-queue" aria-label="Queue">
           <svg viewBox="0 0 24 24" aria-hidden="true"
             ><path
               d="M4 6h16M4 12h16M4 18h10M17 15l4 3-4 3z"
@@ -125,7 +122,7 @@ const { repos } = Astro.props;
               stroke-linecap="round"
               stroke-linejoin="round"></path></svg
           >
-        </button>
+        </Button>
       </div>
     </div>
   </div>
@@ -187,37 +184,9 @@ const { repos } = Astro.props;
 
   .center { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
   .ctrl { display: flex; justify-content: center; align-items: center; gap: 10px; }
-  .bar button {
-    all: unset;
-    cursor: pointer;
-    display: grid;
-    place-items: center;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    color: var(--fg);
-  }
-  .bar button svg { width: 18px; height: 18px; }
-  .bar button:hover { color: var(--accent); }
-  .bar button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .bar button[aria-pressed='true'],
-  .bar button[aria-expanded='true'] { color: var(--accent); background: rgb(255 214 10 / 0.55); }
-  .ctrl .play {
-    width: 40px;
-    height: 40px;
-    background: var(--sun);
-    color: var(--on-sun);
-    box-shadow: 0 0 0 1px var(--accent), 0 0 18px rgb(255 214 10 / 0.6);
-  }
-  .ctrl .play:hover { color: var(--on-sun); transform: scale(1.06); }
-  /* A running play turns Play into Reopen: the tab is already open. The class arrives with
-     the button's name (dock.ts), so its glyph and its name always agree. */
-  .ctrl .play .i-reopen { display: none; }
-  .ctrl .play:global(.is-reopen) .i-play { display: none; }
-  .ctrl .play:global(.is-reopen) .i-reopen { display: block; }
   @media (max-width: 599px) {
     .ctrl { gap: 2px; }
-    .ctrl .shuffle { display: none; }
+    .ctrl :global(.shuffle) { display: none; }
     .disc { width: 36px; height: 36px; }
   }
 
@@ -288,26 +257,20 @@ const { repos } = Astro.props;
     border-radius: 14px 14px 0 0;
     box-shadow: 0 -16px 40px -18px rgb(29 63 208 / 0.5);
   }
+  .queue {
+    /* The queue's icon buttons: accent glyphs, a faint blue hover, yellow when pressed. */
+    --btn-fg: var(--accent);
+    --btn-hover-fg: var(--accent);
+    --btn-hover-bg: rgb(29 63 208 / 0.1);
+    --btn-on-fg: var(--on-sun);
+    --btn-on-bg: var(--sun);
+  }
   .queue .panel-title { color: var(--accent); }
   .q-label { margin: 10px 0 4px; }
   /* Shuffle lives here on phones, where the bar's controls keep their five buttons. */
-  .q-shuffle {
-    all: unset;
-    display: none;
-    align-self: center;
-    place-items: center;
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    cursor: pointer;
-    color: var(--accent);
-  }
-  .q-shuffle svg { width: 18px; height: 18px; }
-  .q-shuffle:hover { background: rgb(29 63 208 / 0.1); }
-  .q-shuffle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .q-shuffle[aria-pressed='true'] { background: var(--sun); color: var(--on-sun); }
+  .panel-head :global(.q-shuffle) { display: none; align-self: center; }
   @media (max-width: 599px) {
-    .q-shuffle { display: grid; }
+    .panel-head :global(.q-shuffle) { display: grid; }
   }
   .q-list { list-style: none; margin: 0; padding: 0; }
   .q-item {
@@ -330,20 +293,8 @@ const { repos } = Astro.props;
   .q-pick small { font: 400 12px/1.3 var(--body); color: var(--muted); }
   .q-pick:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
   .q-move { display: flex; gap: 2px; }
-  .q-move button {
-    all: unset;
-    cursor: pointer;
-    width: 26px;
-    height: 26px;
-    display: grid;
-    place-items: center;
-    border-radius: 50%;
-    color: var(--accent);
-    font-size: 13px;
-  }
-  .q-move button:hover { background: rgb(29 63 208 / 0.1); }
-  .q-move button:focus-visible { outline: 2px solid var(--accent); }
-  .q-move button:disabled { visibility: hidden; }
+  .q-move :global(button) { font-size: 13px; }
+  .q-move :global(button:disabled) { visibility: hidden; }
 
   @media (prefers-reduced-motion: reduce) {
     .dock:global(.is-playing) .disc { animation: none; }
