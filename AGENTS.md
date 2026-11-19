@@ -4,6 +4,10 @@
 
 This project is exempt from TDD. Its only automated tests are the Playwright end-to-end tests in `e2e/` (`npm run e2e`); the owner removed the unit tests on purpose. Verify behavior changes by adding or updating an e2e test where one fits, or by checking the rendered site. Keep new tests in `e2e/`.
 
+## Components
+
+Build every component from native HTML, CSS and JavaScript: an `.astro` file with semantic elements and a scoped `<style>`, with any behaviour in TypeScript under `src/scripts/`. Start from native elements (`<button>`, `<dialog>`, `popover`, `<details>`) and extend the shared components, such as `src/components/Button.astro`. The site ships no UI framework, CSS framework or component library (React, Tailwind, shadcn/ui and the like): the owner keeps it to plain web platform code.
+
 ## Agent skills
 
 ### Issue tracker
