@@ -2,6 +2,8 @@
 // Playlist header: cover art (the GitHub portrait as the disc), title, stats, and the play and shuffle buttons (wired
 // by the dock through their data-np attributes).
 import { Image } from 'astro:assets';
+import Button from './Button.astro';
+import PlayButton from './PlayButton.astro';
 import { GITHUB_USER, type Repo } from '../lib/github';
 import { SITE } from '../lib/site';
 
@@ -24,13 +26,8 @@ const languages = [...new Set(repos.map((r) => r.language).filter((l) => l !== n
     </h1>
     <p class="stats">{commits} commits · {languages.join(' / ')} · updated {lastPush}</p>
     <div class="actions">
-      <button type="button" class="play" data-np="play" aria-label="Play the cued repository, opens in a new tab">
-        <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"></path></svg>
-        <svg class="i-reopen" viewBox="0 0 24 24" aria-hidden="true"
-          ><path d="M7 17 17 7M9 7h8v8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg
-        >
-      </button>
-      <button type="button" class="shuffle" data-np="shuffle-play">Shuffle</button>
+      <PlayButton size="lg" />
+      <Button variant="outline" data-np="shuffle-play">Shuffle</Button>
     </div>
   </div>
 </div>
@@ -71,33 +68,4 @@ const languages = [...new Set(repos.map((r) => r.language).filter((l) => l !== n
   .stats { margin-top: 12px !important; font: 400 13px/1.5 var(--body); color: var(--muted); }
 
   .actions { display: flex; align-items: center; gap: 14px; margin-top: 18px; }
-  .play, .shuffle { all: unset; cursor: pointer; }
-  .play {
-    display: grid;
-    place-items: center;
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
-    background: var(--sun);
-    color: var(--on-sun);
-    box-shadow: 0 0 0 1px var(--accent), 0 10px 28px -8px rgb(255 214 10 / 0.9);
-  }
-  .play svg { width: 24px; height: 24px; }
-  /* During a play this Play is named Reopen, like the Dock's, so it shows the same glyph.
-     The class arrives with the name (dock.ts). */
-  .play .i-reopen { display: none; }
-  .play:global(.is-reopen) .i-play { display: none; }
-  .play:global(.is-reopen) .i-reopen { display: block; }
-  .play:hover { transform: scale(1.05); }
-  .shuffle {
-    font: 500 13px/1 var(--ui);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    padding: 12px 18px;
-    border-radius: 999px;
-    border: 1px solid var(--line-strong);
-    color: var(--accent);
-  }
-  .shuffle:hover { background: var(--sun); color: var(--on-sun); border-color: var(--sun); }
-  .play:focus-visible, .shuffle:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 </style>
