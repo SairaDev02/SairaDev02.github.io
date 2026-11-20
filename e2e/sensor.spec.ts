@@ -2,7 +2,7 @@
 // pointing or tapping just left of the tag, where the marker is. Fixture order: A-01
 // tidepool (Active, Rust, 5 commits), A-02 paper-lantern, A-03 quiet-notes, A-04 empty-box.
 import type { Page } from '@playwright/test';
-import { expect, test } from './test';
+import { expect, lazyChunkRequests, test } from './test';
 
 const row = (page: Page, i: number) => page.locator(`[data-asset="${i}"]`);
 const status = (page: Page) => page.getByRole('status');
@@ -154,15 +154,11 @@ test.describe('theme', () => {
 
 test.describe('loading', () => {
   test('no scene script is requested before the load event', async ({ page }) => {
-    const before: string[] = [];
-    const after: string[] = [];
-    let loaded = false;
-    page.on('request', (r) => /\/_astro\/.*\.js/.test(r.url()) && (loaded ? after : before).push(r.url()));
-    page.on('load', () => (loaded = true));
     await page.goto('/');
     await expect(tagEl(page, 'A-01')).toBeVisible();
-    expect(before.filter((u) => /scene|three/i.test(u))).toEqual([]);
-    expect(after.filter((u) => /scene/i.test(u)).length).toBeGreaterThan(0);
+    const { before, after } = await lazyChunkRequests(page);
+    expect(before).toEqual([]);
+    expect(after.filter((u) => /\/scene\./.test(u)).length).toBeGreaterThan(0);
   });
 
   test('nothing shifts when the scene arrives late', async ({ page }) => {

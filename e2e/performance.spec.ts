@@ -1,7 +1,7 @@
 // Performance guard for both late arrivals at once: the sensor scene and the background
 // field, each chunk delayed, with nothing shifting and neither requested before the load
 // event. (Each has its own single-arrival test in sensor.spec.ts and field.spec.ts.)
-import { expect, test } from './test';
+import { expect, lazyChunkRequests, test } from './test';
 
 test('nothing shifts while the scene and the field both arrive late, and neither is requested before the load event', async ({ page }) => {
   await page.addInitScript(() => {
@@ -24,14 +24,5 @@ test('nothing shifts while the scene and the field both arrive late, and neither
   await expect(page.locator('canvas[data-field]')).toHaveCount(1, { timeout: 15_000 });
   expect((await frame.boundingBox())!.height).toBeCloseTo(reserved.height, 0);
   expect(await page.evaluate(() => (window as unknown as { cls: number }).cls)).toBeLessThan(0.1);
-  // The page's own timeline, not the order Playwright reports events in: a request made
-  // from the load handler starts after the navigation's loadEventStart, never before.
-  const early = await page.evaluate(() => {
-    const [nav] = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[];
-    return performance
-      .getEntriesByType('resource')
-      .filter((e) => /\/_astro\/.*(scene|field|three).*\.js/i.test(e.name) && e.startTime < nav.loadEventStart)
-      .map((e) => e.name);
-  });
-  expect(early).toEqual([]);
+  expect((await lazyChunkRequests(page)).before).toEqual([]);
 });

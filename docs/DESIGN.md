@@ -15,7 +15,10 @@ Four inks, one meaning each.
 | Magenta | Focus: the previewed Asset, its brackets and card, the hovered row, the focus ring |
 | Yellow | The highlighter: the sweep, the pointer, the first-load reveal |
 
-- Marks (dots, bars, borders, brackets, markers) use the pure inks.
+- Marks (dots, bars, borders, brackets, markers) use the pure inks, except where a mark
+  that carries state would fall below 3:1 against its background. On paper, pure cyan is
+  2.42:1, so the live chip's dot and outline and a live tag's outline use the cyan text
+  ink in Light. The owner chose this on 2026-11-20.
 - Text tied to an ink uses the text-ink token, because pure cyan and magenta fail 4.5:1
   on paper.
 - Yellow is never text and never the only carrier of a meaning.
