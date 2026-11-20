@@ -49,20 +49,20 @@ const languages = [...new Set(repos.map((r) => r.language).filter((l) => l !== n
     text-transform: uppercase;
     overflow-wrap: anywhere;
   }
-  /* Live means cyan: the chip's mark and outline are the pure ink, its text the text ink. */
+  /* Live means cyan: the chip, its mark and its outline take the text ink, which holds 3:1 on paper. */
   .chip {
     display: inline-flex;
     align-items: center;
     gap: 8px;
     margin-top: 14px !important;
     padding: 5px 10px;
-    border: 1px solid var(--ink-c);
+    border: 1px solid var(--ink-c-text);
     font: 700 12px/1 var(--body);
     letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--ink-c-text);
   }
-  .dot { width: 8px; height: 8px; background: var(--ink-c); }
+  .dot { width: 8px; height: 8px; background: var(--ink-c-text); }
   .stats { margin-top: 12px !important; font: 400 13px/1.6 var(--body); letter-spacing: 0.04em; color: var(--muted); }
   @media (min-width: 600px) {
     .frame img { width: 128px; height: 128px; }

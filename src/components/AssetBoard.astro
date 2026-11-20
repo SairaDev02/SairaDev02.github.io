@@ -144,6 +144,10 @@ const max = Math.max(1, ...repos.flatMap((r) => r.wave));
   .row:is(:hover, :focus-visible, [data-previewed='true'])::before,
   .row:is(:hover, :focus-visible, [data-previewed='true'])::after { opacity: 1; }
   .row:is(:hover, :focus-visible, [data-previewed='true']) .tag-no { color: var(--ink-m-text); }
+  /* The live dot darkens toward the text colour so it keeps 4.5:1 on the magenta tint. */
+  .row[data-status='active']:is(:hover, :focus-visible, [data-previewed='true']) .mark {
+    color: color-mix(in srgb, var(--ink-c-text) 65%, var(--fg));
+  }
   /* The activity bars brighten: the text colour, or the live ink mixed toward it. */
   .row:is(:hover, :focus-visible, [data-previewed='true']) .c-wave { color: var(--fg); }
   .row[data-status='active']:is(:hover, :focus-visible, [data-previewed='true']) .c-wave {
