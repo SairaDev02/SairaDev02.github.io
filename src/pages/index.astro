@@ -53,10 +53,23 @@ const ogImage = await getImage({ src: ogCard, format: 'png' });
 <script>
   import '../scripts/home';
   import '../scripts/sensor/boot';
+  import '../scripts/field/boot';
 </script>
 
 <style>
   .page { min-height: 100vh; }
+  /* The background field (scripts/field/field.ts) fills the screen behind everything,
+     scaled by whole pixels. It is fixed, so its arrival moves nothing. The scrim keeps the
+     content column readable: the stock, solid behind the column and clear at the sides. */
+  :global(.field) { position: fixed; top: 0; left: 0; z-index: -2; image-rendering: pixelated; pointer-events: none; }
+  .page::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--bg) 78%, transparent) 18%, color-mix(in srgb, var(--bg) 78%, transparent) 82%, transparent);
+  }
   /* The first focus stop: out of sight until focused, then a pill over the header. It
      stays in the tab order and the accessibility tree, so it is moved, never hidden. */
   .skip {

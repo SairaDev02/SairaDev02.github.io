@@ -68,11 +68,11 @@ test.describe('page content', () => {
     await expect(row(page, 3).locator('.commits')).toContainText('0');
   });
 
-  test('nothing is fixed to the bottom of the screen', async ({ page }) => {
+  test('nothing is fixed to the bottom of the screen (the decorative field aside)', async ({ page }) => {
     const fixed = await page.evaluate(() =>
       [...document.querySelectorAll('body *')].filter((el) => {
         const s = getComputedStyle(el);
-        return s.position === 'fixed' && !el.classList.contains('skip');
+        return s.position === 'fixed' && !el.classList.contains('skip') && !el.hasAttribute('data-field');
       }).length,
     );
     expect(fixed).toBe(0);
