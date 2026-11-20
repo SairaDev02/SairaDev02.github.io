@@ -29,7 +29,7 @@ const ogCardRoute = {
 // Served as the GitHub Pages user page, so at the domain root: no `base`.
 export default defineConfig({
   site: 'https://sairadev02.github.io',
-  // The playlist cover is the GitHub portrait, fetched and re-encoded at build time.
+  // The operator block's portrait is the GitHub avatar, fetched and re-encoded at build time.
   image: { domains: ['avatars.githubusercontent.com'] },
   // The stylesheet is small; inlining it removes a render-blocking request.
   build: { inlineStylesheets: 'always' },
@@ -46,9 +46,9 @@ export default defineConfig({
         "trusted-types 'none'",
       ],
       scriptDirective: { hashes: [themeInitHash] },
-      // Astro hashes the inline styles and scripts it emits; CdPlayer.astro adds the hash
-      // of its own inline style element. The pages carry no style attributes, so nothing
-      // needs `'unsafe-inline'`.
+      // Astro hashes the inline styles and scripts it emits, and `themeInitHash` above covers
+      // the theme script. The pages carry no style attributes, so nothing needs
+      // `'unsafe-inline'`.
     },
   },
   integrations: [ogCardRoute],

@@ -1,5 +1,6 @@
 // The home page's schema.org graph: the site, its profile page and the handle's Person,
-// linked by @id so a parser can join them into one entity. Pure, so the shape is unit-tested.
+// linked by @id so a parser can join them into one entity. Pure: the shape depends only on
+// its arguments.
 import type { SiteMetadata } from './site';
 
 export function profileGraph(meta: SiteMetadata, dateModified: string) {
