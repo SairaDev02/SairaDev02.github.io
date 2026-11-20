@@ -3,7 +3,9 @@
 // API (REPOS_FIXTURE, see src/lib/github.ts), so the page content is fixed.
 import { defineConfig, devices } from '@playwright/test';
 
-const PORT = 4322; // not astro's default 4321, so a running dev server is never reused
+// Not astro's default 4321, so a running dev server is never reused. E2E_PORT gives
+// checkouts that test side by side (such as worktrees) a server each.
+const PORT = Number(process.env.E2E_PORT) || 4322;
 const CI = !!process.env.CI;
 
 export default defineConfig({
