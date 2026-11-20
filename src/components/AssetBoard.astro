@@ -118,7 +118,7 @@ const max = Math.max(1, ...repos.flatMap((r) => r.wave));
   .mark { font: 400 14px/1 var(--body); color: var(--muted); }
   [data-status='active'] .mark { color: var(--ink-c-text); }
   .tag-no { font: 400 13px/1 var(--ui); letter-spacing: 0.08em; }
-  .name { font: 500 15px/1.3 var(--ui); overflow-wrap: anywhere; }
+  .name { display: inline-block; font: 500 15px/1.3 var(--ui); overflow-wrap: anywhere; }
   .opened { margin-left: 10px; font: 400 12px/1.3 var(--body); color: var(--muted); white-space: nowrap; }
   .lang, .date { font: 400 13px/1.4 var(--body); color: var(--muted); }
   .commits { font: 600 13px/1.4 var(--wide); }
@@ -140,13 +140,69 @@ const max = Math.max(1, ...repos.flatMap((r) => r.wave));
   }
   .row::before { left: 0; border-width: 2px 0 2px 2px; }
   .row::after { right: 0; border-width: 2px 2px 2px 0; }
-  .row:hover, .row:focus-visible { background: color-mix(in srgb, var(--ink-m) 7%, transparent); }
-  .row:hover::before, .row:hover::after, .row:focus-visible::before, .row:focus-visible::after { opacity: 1; }
-  .row:hover .tag-no, .row:focus-visible .tag-no { color: var(--ink-m-text); }
+  .row:is(:hover, :focus-visible, [data-previewed='true']) { background: color-mix(in srgb, var(--ink-m) 7%, transparent); }
+  .row:is(:hover, :focus-visible, [data-previewed='true'])::before,
+  .row:is(:hover, :focus-visible, [data-previewed='true'])::after { opacity: 1; }
+  .row:is(:hover, :focus-visible, [data-previewed='true']) .tag-no { color: var(--ink-m-text); }
+  /* The activity bars brighten: the text colour, or the live ink mixed toward it. */
+  .row:is(:hover, :focus-visible, [data-previewed='true']) .c-wave { color: var(--fg); }
+  .row[data-status='active']:is(:hover, :focus-visible, [data-previewed='true']) .c-wave {
+    color: color-mix(in srgb, var(--ink-c-text) 65%, var(--fg));
+  }
   /* A visible 2 px ring in the focus ink; an outline, so forced colours keep it. */
   .row:focus-visible { outline: 2px solid var(--ink-m); outline-offset: -2px; }
   @media (forced-colors: active) {
     .row:focus-visible { outline-color: Highlight; }
     .row:hover::before, .row:hover::after, .row:focus-visible::before, .row:focus-visible::after { border-color: Highlight; }
   }
+
+  /* ---------- motion: only under no-preference; under reduce only colours change ---------- */
+  @keyframes row-in { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+  /* The yellow highlighter band rides the clip's edge. */
+  @keyframes sweep { from { background-position: -50% 0; } to { background-position: 150% 0; } }
+  @keyframes flash { from { background-color: color-mix(in srgb, var(--ink-m) 32%, transparent); } }
+  @media (prefers-reduced-motion: no-preference) {
+    .list li { position: relative; animation: row-in 380ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+    .list li::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--ink-y) 35%, transparent) 70%, var(--ink-y) 99%, transparent) -50% 0 / 28% 100% no-repeat;
+      animation: sweep 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+    /* Stagger: 70 ms apart from 420 ms; later rows wait for the end of the sequence. */
+    .list li:nth-child(1), .list li:nth-child(1)::after { animation-delay: 420ms; }
+    .list li:nth-child(2), .list li:nth-child(2)::after { animation-delay: 490ms; }
+    .list li:nth-child(3), .list li:nth-child(3)::after { animation-delay: 560ms; }
+    .list li:nth-child(n + 4), .list li:nth-child(n + 4)::after { animation-delay: 630ms; }
+    /* Once each: after the reveal ends the row stays settled. */
+    .list li[data-revealed], .list li[data-revealed]::after { animation: none; }
+    /* Rows below the fold (marked by script after layout) reveal on a view timeline. Without
+       view timelines they keep the time-based reveal above. */
+    @supports (animation-timeline: view()) {
+      .list li.later { view-timeline: --row block; }
+      .list li.later, .list li.later::after {
+        animation-duration: auto;
+        animation-timing-function: linear;
+        animation-delay: 0s;
+        animation-timeline: --row;
+        animation-range: entry 10% entry 100%;
+      }
+    }
+    /* Preview: the title steps right; the bars take their colour over 300 ms. */
+    .name { transition: translate 220ms cubic-bezier(0.16, 1, 0.3, 1); }
+    .c-wave { transition: color 300ms linear; }
+    .row:is(:hover, :focus-visible, [data-previewed='true']) .name { translate: 6px 0; }
+    /* Open: the row flashes magenta once. */
+    .row.flash { animation: flash 600ms ease-out; }
+  }
+</style>
+
+<style is:global>
+  /* Decoding and counting (scripts/motion.ts): the real text stays in place, in the flow; an
+     overlay in the page's background covers it and draws the changing glyphs, so the layout
+     never moves with their widths. */
+  .text-live { position: relative; }
+  .text-overlay { position: absolute; inset: 0; background: var(--bg); color: inherit; text-align: inherit; pointer-events: none; }
 </style>
