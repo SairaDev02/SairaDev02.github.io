@@ -11,6 +11,7 @@
 // frames until the first input, paused off screen and in hidden tabs, one still frame under
 // reduced motion; the grid is scaled by whole device pixels with its width following the
 // frame. A Preview reaches the scene through preview.ts (onPreview); the view sets it too.
+// Where the tags and card go is placement.ts.
 import {
   BufferAttribute,
   Color,
@@ -35,19 +36,22 @@ import {
   WebGLRenderTarget,
 } from 'three';
 import { plural } from '../../lib/format';
-import { frameLoop } from '../render/canvas';
+import { frameLoop, sizeToGrid } from '../render/canvas';
 import { BAYER_GLSL, inkOf } from '../gpu/bayer';
 import { type Asset, readAssets } from '../assets';
 import { isOpened, onOpened, openAsset } from '../open';
 import { getPreview, onPreview, setPreview } from '../preview';
 import { currentTheme, onThemeChange } from '../theme';
+import { createPlacement, type Box } from './placement';
 import { height, placeAsset } from './terrain';
 
-/** Base grids (device pixels at scale 1): wide, and portrait on phones. */
-const WIDE = { w: 512, h: 224 };
-const TALL = { w: 256, h: 320 };
+/** Phones: this must match the `@media (max-width: ...)` rule in SensorView.astro, which also
+ * holds the base grid (--grid-w, --grid-h) that the scene reads from the frame. */
+const PHONE_QUERY = '(max-width: 600px)';
 const SIZE = 280; // terrain side, world units: wide enough to reach the haze
 const PICK = 28; // CSS px
+/** Full tone in the red (terrain) channel: the print pass maps it to the darkest level with no dither, so it prints as solid K. */
+const K = 1;
 
 const terrainVert = /* glsl */ `
   varying vec3 vPos;
@@ -133,10 +137,6 @@ const make = <K extends keyof HTMLElementTagNameMap>(tag: K, className: string, 
   return el;
 };
 
-type Box = { x: number; y: number; w: number; h: number };
-const overlap = (a: Box, b: Box) =>
-  Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
-
 export function mountSensor(frame: HTMLElement) {
   const assets: Asset[] = readAssets();
   let renderer: WebGLRenderer;
@@ -153,9 +153,13 @@ export function mountSensor(frame: HTMLElement) {
   );
   renderer.setPixelRatio(1);
   renderer.outputColorSpace = LinearSRGBColorSpace;
-  const narrow = matchMedia('(max-width: 600px)');
-  let W = WIDE.w;
-  let H = WIDE.h;
+  const narrow = matchMedia(PHONE_QUERY);
+  /** The base grid, as the frame's CSS declares it for the current width. */
+  const baseGrid = () => {
+    const style = getComputedStyle(frame);
+    return { w: Number.parseFloat(style.getPropertyValue('--grid-w')), h: Number.parseFloat(style.getPropertyValue('--grid-h')) };
+  };
+  let { w: W, h: H } = baseGrid();
   const target = new WebGLRenderTarget(W, H, { magFilter: NearestFilter, minFilter: NearestFilter });
 
   // ---------- scene ----------
@@ -167,8 +171,8 @@ export function mountSensor(frame: HTMLElement) {
   const pos = geo.attributes.position as BufferAttribute;
   for (let i = 0; i < pos.count; i++) pos.setY(i, height(pos.getX(i), pos.getZ(i)));
   geo.computeVertexNormals();
-  const light = () => (currentTheme() === 'light' ? 1 : 0);
-  const uniforms = { uSweep: { value: 0 }, uPointer: { value: new Vector3() }, uPointerOn: { value: 0 }, uPaperMode: { value: light() } };
+  const paperMode = () => (currentTheme() === 'light' ? 1 : 0);
+  const uniforms = { uSweep: { value: 0 }, uPointer: { value: new Vector3() }, uPointerOn: { value: 0 }, uPaperMode: { value: paperMode() } };
   const terrain = new Mesh(geo, new ShaderMaterial({ vertexShader: terrainVert, fragmentShader: terrainFrag, uniforms }));
   scene.add(terrain);
 
@@ -179,7 +183,7 @@ export function mountSensor(frame: HTMLElement) {
     group.position.set(x, height(x, z), z);
     const core = new Mesh(new OctahedronGeometry(1.7), new MeshBasicMaterial());
     core.position.y = 6;
-    const mast = new Mesh(new CylinderGeometry(0.12, 0.12, 6, 4), new MeshBasicMaterial({ color: new Color(0.9, 0, 0) }));
+    const mast = new Mesh(new CylinderGeometry(0.12, 0.12, 6, 4), new MeshBasicMaterial({ color: new Color(K, 0, 0) }));
     mast.position.y = 3;
     const ring = new Mesh(new RingGeometry(3, 3.6, 40), new MeshBasicMaterial({ side: DoubleSide }));
     ring.rotation.x = -Math.PI / 2;
@@ -199,11 +203,11 @@ export function mountSensor(frame: HTMLElement) {
     uC: { value: new Color() },
     uM: { value: new Color() },
     uY: { value: new Color() },
-    uPaperMode: { value: light() },
+    uPaperMode: { value: paperMode() },
   };
   /** Reads the inks and terrain levels from the page's custom properties. */
   const recolour = () => {
-    uniforms.uPaperMode.value = printUniforms.uPaperMode.value = light();
+    uniforms.uPaperMode.value = printUniforms.uPaperMode.value = paperMode();
     [0, 1, 2, 3].forEach((n) => printUniforms.uLevels.value[n].copy(inkOf(`--terrain-${n}`)));
     printUniforms.uC.value.copy(inkOf('--ink-c'));
     printUniforms.uM.value.copy(inkOf('--ink-m'));
@@ -229,7 +233,7 @@ export function mountSensor(frame: HTMLElement) {
   setHint();
   const clock = make('span', 'readout tr clock', '--:--:-- UTC');
   const coord = make('span', 'readout bl grid', 'Grid ---.- / ---.-');
-  const activeCount = assets.filter((a) => a.active).length;
+  const activeCount = assets.filter((a) => a.status === 'active').length;
   const count = make('span', 'readout br count', `${String(assets.length).padStart(2, '0')} assets · ${activeCount} active`);
   const crossX = make('i', 'cross-x');
   const crossY = make('i', 'cross-y');
@@ -246,7 +250,7 @@ export function mountSensor(frame: HTMLElement) {
   card.append(cardStatus, cardName, cardMeta, cardSeen);
   hud.append(hint, clock, coord, count, crossX, crossY, lock);
   const tags = assets.map((asset) => {
-    const el = make('span', `tag${asset.active ? ' is-live' : ''}`, asset.tag);
+    const el = make('span', `tag${asset.status === 'active' ? ' is-live' : ''}`, asset.tag);
     el.dataset.sensorTag = asset.tag;
     hud.append(el);
     return el;
@@ -259,7 +263,7 @@ export function mountSensor(frame: HTMLElement) {
 
   // Whole-pixel scale: k device pixels per grid pixel, the grid widened to fill the frame.
   const resize = () => {
-    const base = narrow.matches ? TALL : WIDE;
+    const base = baseGrid();
     const dpr = devicePixelRatio || 1;
     const avail = Math.floor(frame.clientWidth * dpr);
     const k = Math.max(1, Math.round(avail / base.w));
@@ -273,8 +277,7 @@ export function mountSensor(frame: HTMLElement) {
     if (narrow.matches) camera.setViewOffset(W, H, 0, Math.round(H * 0.14), W, H);
     else camera.clearViewOffset();
     camera.updateProjectionMatrix();
-    canvas.style.width = `${(W * k) / dpr}px`;
-    canvas.style.height = `${(H * k) / dpr}px`;
+    sizeToGrid(canvas, W, H, k, dpr);
     loop.redraw();
   };
 
@@ -290,7 +293,10 @@ export function mountSensor(frame: HTMLElement) {
     let bestD = PICK;
     screen.forEach((s, i) => {
       const d = Math.hypot(s.x - p.x, s.y - p.y);
-      if (d < bestD) (bestD = d), (best = i);
+      if (d < bestD) {
+        bestD = d;
+        best = i;
+      }
     });
     return best;
   };
@@ -315,8 +321,13 @@ export function mountSensor(frame: HTMLElement) {
       coord.textContent = `Grid ${(g.point.x + 500).toFixed(1)} / ${(g.point.z + 500).toFixed(1)} · El ${(g.point.y * 12 + 300).toFixed(0)} m`;
     }
     const i = pick(p);
-    if (i >= 0) (mine = true), setPreview(i);
-    else if (mine) (mine = false), setPreview(null);
+    if (i >= 0) {
+      mine = true;
+      setPreview(i);
+    } else if (mine) {
+      mine = false;
+      setPreview(null);
+    }
     frame.style.cursor = i >= 0 ? 'pointer' : 'crosshair';
     loop.redraw();
   });
@@ -326,7 +337,10 @@ export function mountSensor(frame: HTMLElement) {
     pointer = null;
     uniforms.uPointerOn.value = 0;
     hud.classList.remove('has-pointer');
-    if (mine) (mine = false), setPreview(null);
+    if (mine) {
+      mine = false;
+      setPreview(null);
+    }
     loop.redraw();
   });
   // Touch has no hover: the first tap previews an Asset, a second tap on the same one opens
@@ -337,54 +351,26 @@ export function mountSensor(frame: HTMLElement) {
     if (e.pointerType !== 'touch') return;
     touched = true;
     const i = pick(local(e));
-    if (i < 0) (mine = false), setPreview(null);
-    else if (getPreview() === i) openAsset(assets[i]);
-    else (mine = true), setPreview(i);
+    if (i < 0) {
+      mine = false;
+      setPreview(null);
+    } else if (getPreview() === i) openAsset(assets[i]);
+    else {
+      mine = true;
+      setPreview(i);
+    }
   });
   frame.addEventListener('click', () => {
-    if (touched) return void (touched = false);
+    if (touched) {
+      touched = false;
+      return;
+    }
     const i = pointer ? pick(pointer) : -1;
     if (i >= 0) openAsset(assets[i]);
   });
 
-  // ---------- card placement ----------
-  // The card goes beside its marker wherever (right, left, below, above) it hides the least
-  // of the other tags, markers and corner readouts, inside the view. It keeps its spot
-  // until another is clearly better (150 px2), so it doesn't flicker as the view turns.
-  const tagAt = assets.map(() => ({ x: 0, y: 0 }));
-  const readouts = [hint, clock, coord, count];
-  let side = 0;
-  const placeCard = (p: { x: number; y: number }, cw: number, ch: number, focus: number) => {
-    const w = card.offsetWidth;
-    const h = card.offsetHeight;
-    const gap = 26;
-    const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), Math.max(lo, hi));
-    const obstacles: Box[] = [
-      { x: p.x - gap, y: p.y - gap, w: gap * 2, h: gap * 2 }, // its own marker and brackets
-      ...readouts.filter((c) => c.offsetWidth).map((c) => ({ x: c.offsetLeft, y: c.offsetTop, w: c.offsetWidth, h: c.offsetHeight })),
-    ];
-    assets.forEach((_, i) => {
-      if (i === focus) return;
-      obstacles.push({ x: tagAt[i].x - 4, y: tagAt[i].y - 4, w: tags[i].offsetWidth + 8, h: tags[i].offsetHeight + 8 });
-      obstacles.push({ x: screen[i].x - 10, y: screen[i].y - 10, w: 20, h: 20 });
-    });
-    // Every spot that still touches the marker, sliding along each side in small steps.
-    // Level with the marker is preferred; each step away costs a little.
-    const spots: { x: number; y: number; pen: number }[] = [];
-    for (let dy = 12 - h; dy <= -12; dy += 6) {
-      const pen = Math.abs(dy + 18);
-      spots.push({ x: p.x + gap, y: p.y + dy, pen }, { x: p.x - gap - w, y: p.y + dy, pen: pen + 4 });
-    }
-    for (let dx = 20 - w; dx <= -20; dx += 10) {
-      const pen = 60 + Math.abs(dx + w / 2) * 0.5;
-      spots.push({ x: p.x + dx, y: p.y + gap, pen }, { x: p.x + dx, y: p.y - gap - h, pen: pen + 4 });
-    }
-    const boxes = spots.map((s) => ({ x: clamp(s.x, 8, cw - w - 8), y: clamp(s.y, 8, ch - h - 8), w, h }));
-    const cost = boxes.map((b, k) => obstacles.reduce((sum, o, j) => sum + overlap(b, o) * (j === 0 ? 4 : 1), 0) + spots[k].pen);
-    const best = cost.indexOf(Math.min(...cost));
-    if (side < 0 || side >= cost.length || cost[best] < cost[side] - 150) side = best;
-    return boxes[side];
-  };
+  // ---------- tags and card (placement.ts) ----------
+  const placement = createPlacement({ assets, tags, card, readouts: [hint, clock, coord, count], isOpened });
 
   // ---------- frame ----------
   const v = new Vector3();
@@ -419,9 +405,9 @@ export function mountSensor(frame: HTMLElement) {
       // Separations: focus is magenta (blue) alone, live is cyan (green), the rest K (red).
       const core = (m.core.material as MeshBasicMaterial).color;
       if (sel) core.setRGB(0, 0, 1);
-      else if (assets[i].active) core.setRGB(0, 1, 0);
-      else core.setRGB(0.9, 0, 0);
-      (m.ring.material as MeshBasicMaterial).color.setRGB(sel ? 0 : 0.9, 0, sel ? 1 : 0);
+      else if (assets[i].status === 'active') core.setRGB(0, 1, 0);
+      else core.setRGB(K, 0, 0);
+      (m.ring.material as MeshBasicMaterial).color.setRGB(sel ? 0 : K, 0, sel ? 1 : 0);
     });
 
     renderer.setRenderTarget(target);
@@ -429,33 +415,13 @@ export function mountSensor(frame: HTMLElement) {
     renderer.setRenderTarget(null);
     renderer.render(post, postCam);
 
-    // Tags follow their markers, nudged down where two would overlap, flipped at the edge.
     const cw = canvas.clientWidth;
     const ch = canvas.clientHeight;
     markers.forEach((m, i) => {
       m.core.getWorldPosition(v).project(camera);
       screen[i] = { x: (v.x * 0.5 + 0.5) * cw, y: (-v.y * 0.5 + 0.5) * ch };
     });
-    const placed: { x: number; y: number }[] = [];
-    [...screen.keys()]
-      .sort((a, b) => screen[a].y - screen[b].y)
-      .forEach((i) => {
-        const opened = isOpened(i);
-        const text = opened ? `${assets[i].tag} ↗` : assets[i].tag;
-        if (tags[i].textContent !== text) tags[i].textContent = text;
-        const tw = tags[i].offsetWidth || 44;
-        let x = screen[i].x + 14;
-        const y0 = screen[i].y - 9;
-        let y = y0;
-        if (x + tw > cw) x = screen[i].x - 14 - tw;
-        while (placed.some((p) => Math.abs(p.x - x) < tw + 2 && Math.abs(p.y - y) < 20)) y += 20;
-        placed.push({ x, y });
-        tagAt[i] = { x, y };
-        tags[i].style.translate = `${x}px ${y}px`;
-        tags[i].classList.toggle('is-sel', i === focus);
-        tags[i].classList.toggle('is-opened', opened);
-        tags[i].classList.add('is-placed');
-      });
+    placement.placeTags(screen, cw, focus);
 
     // The previewed Asset: brackets on the marker and the card.
     const narrowNow = narrow.matches;
@@ -468,13 +434,13 @@ export function mountSensor(frame: HTMLElement) {
         cardStatus.textContent = text;
         cardName.textContent = a.name.toUpperCase();
         cardMeta.textContent = `${a.language} · ${plural(a.commits, 'commit')}`;
-        cardSeen.textContent = `Uplink ${a.pushed} · ${a.active ? 'Active' : 'Dormant'}`;
+        cardSeen.textContent = `Uplink ${a.pushed} · ${a.status === 'active' ? 'Active' : 'Dormant'}`;
       }
       if (focus !== shown) {
         card.hidden = lock.hidden = false;
         restart(lock, 'is-locking');
         restart(card, 'is-in');
-        side = -1; // a new Asset picks its spot afresh
+        placement.resetCard();
       }
       let box: Box;
       if (narrowNow) {
@@ -482,18 +448,10 @@ export function mountSensor(frame: HTMLElement) {
         card.style.translate = '';
         box = { x: card.offsetLeft, y: card.offsetTop, w: card.offsetWidth, h: card.offsetHeight };
       } else {
-        box = placeCard(p, cw, ch, focus);
+        box = placement.placeCard(screen, cw, ch, focus);
         card.style.translate = `${box.x}px ${box.y}px`;
       }
-      // Where no spot was clear, a tag under the card moves to the other side of its marker
-      // if that side is clear.
-      assets.forEach((_, i) => {
-        if (i === focus) return;
-        const t = { ...tagAt[i], w: tags[i].offsetWidth, h: tags[i].offsetHeight };
-        if (!overlap(box, t)) return;
-        const flipped = { ...t, x: tagAt[i].x > screen[i].x ? screen[i].x - 14 - t.w : screen[i].x + 14 };
-        if (flipped.x >= 0 && flipped.x + t.w <= cw && !overlap(box, flipped)) tags[i].style.translate = `${flipped.x}px ${flipped.y}px`;
-      });
+      placement.clearOfCard(box, screen, cw, focus);
       shownText = text;
     } else if (shown !== -1) {
       card.hidden = lock.hidden = true;
@@ -506,9 +464,15 @@ export function mountSensor(frame: HTMLElement) {
   const loop = frameLoop(canvas, frameFn);
   resize();
   new ResizeObserver(resize).observe(frame);
-  narrow.addEventListener('change', () => (setHint(), resize()));
+  narrow.addEventListener('change', () => {
+    setHint();
+    resize();
+  });
   onPreview(() => loop.redraw());
   onOpened(() => loop.redraw());
   // The theme notification: read the inks again and redraw at once.
-  onThemeChange(() => (recolour(), loop.redraw()));
+  onThemeChange(() => {
+    recolour();
+    loop.redraw();
+  });
 }
