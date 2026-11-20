@@ -99,9 +99,11 @@ const server = await startServer();
 try {
   const browser = await chromium.launch();
   try {
-    const page = await browser.newPage({ viewport: { width: 1300, height: 900 }, deviceScaleFactor: 1 });
+    // Dark: the card prints on key black (see src/dev/og-card.astro). With no stored choice,
+    // the pre-paint script follows the device scheme, which this sets.
+    const page = await browser.newPage({ viewport: { width: 1300, height: 900 }, deviceScaleFactor: 1, colorScheme: 'dark' });
     await page.goto(CARD_URL);
-    // The route sets this after painting the sky and loading the card's three faces.
+    // The route sets this after drawing the view and loading the card's faces.
     await page.locator('[data-og-ready="true"]').waitFor();
     await page.locator('#og-card').screenshot({ path: OUT, animations: 'disabled' });
   } finally {

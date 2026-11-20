@@ -38,8 +38,8 @@ export const SITE: SiteMetadata = {
 };
 
 /**
- * The home page's link preview image (src/assets/og-card.png): the wordmark on a frosted
- * panel over the site's dithered sky and its sun. It describes the card and its text, so
+ * The home page's link preview image (src/assets/og-card.png): the site's sensor view of
+ * dithered terrain and tagged Assets, above the wordmark. It describes the card and its text, so
  * someone who sees only the alt text knows what the unfurled link shows.
  */
-export const OG_IMAGE_ALT = `${GITHUB_USER} in large type on a frosted panel over a pixel-dithered blue cloud sky with a small yellow sun`;
+export const OG_IMAGE_ALT = `${GITHUB_USER} in large type below a pixel-dithered terrain map on black, with tagged markers in cyan and magenta and a yellow scan sweep`;

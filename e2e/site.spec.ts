@@ -8,7 +8,7 @@ const TITLE = 'SairaDev02 · public repositories';
 const DESCRIPTION =
   'Public repositories of SairaDev02: names, languages, commit counts and recent activity.';
 const OG_ALT =
-  'SairaDev02 in large type on a frosted panel over a pixel-dithered blue cloud sky with a small yellow sun';
+  'SairaDev02 in large type below a pixel-dithered terrain map on black, with tagged markers in cyan and magenta and a yellow scan sweep';
 
 /** The content of a `property` or `name` meta tag. */
 const meta = async (page: Page, key: string) =>
@@ -176,9 +176,9 @@ test.describe('icons', () => {
     const svgRes = await request.get('/favicon.svg');
     expect(svgRes.ok()).toBe(true);
     expect(svgRes.headers()['content-type']).toContain('image/svg+xml');
-    // The icon's five fills are the spec's picture tokens.
+    // The icon's four fills are Dark tokens: stock, magenta (focus), terrain grey, cyan (live).
     const fills = [...(await svgRes.text()).matchAll(/fill="(#[0-9a-f]{6})"/gi)].map((m) => m[1].toLowerCase()).sort();
-    expect(fills).toEqual(['#13238a', '#2f55e4', '#a9c3f6', '#f6f9ff', '#ffd60a']);
+    expect(fills).toEqual(['#0a0c0e', '#18c0ff', '#7d8791', '#ff3dad']);
 
     const icoRes = await request.get('/favicon.ico');
     expect(icoRes.ok()).toBe(true);

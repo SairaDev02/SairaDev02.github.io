@@ -1,15 +1,8 @@
-// DOM plumbing for dithered canvases: palettes from CSS, whole-pixel sizing, and a frame
-// loop capped at 30 fps that waits for the first input, slows down when frames are
-// expensive, and pauses off screen and in hidden tabs.
-import { packRgb, type Palette } from './dither';
+// DOM plumbing for the pixel-grid canvases (the sensor view and the background field):
+// whole-pixel sizing, and a frame loop capped at 30 fps that waits for the first input,
+// slows down when frames are expensive, and pauses off screen and in hidden tabs.
 
 export const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-/** Reads colours from custom properties on `el`, e.g. ['--shade-0', ...]. */
-export function readColours(el: Element, names: readonly string[]): Palette {
-  const cs = getComputedStyle(el);
-  return Uint32Array.from(names, (v) => packRgb(cs.getPropertyValue(v)));
-}
 
 /**
  * Shows a canvas holding a `w` x `h` grid at `k` device pixels per grid pixel: its CSS
@@ -24,7 +17,7 @@ export function sizeToGrid(canvas: HTMLCanvasElement, w: number, h: number, k: n
  * Lets the browser handle pending input and paint before the caller continues, so a long
  * stretch of setup runs as several short tasks. Uses scheduler.yield() where available.
  */
-export function yieldToMain(): Promise<void> {
+function yieldToMain(): Promise<void> {
   const scheduler = (globalThis as { scheduler?: { yield?: () => Promise<void> } }).scheduler;
   return scheduler?.yield ? scheduler.yield() : new Promise((resolve) => setTimeout(resolve, 0));
 }

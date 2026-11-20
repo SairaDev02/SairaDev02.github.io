@@ -1,15 +1,19 @@
 ---
-// The asset board: one row per public repository, numbered to match its tag (A-01...).
-// Every row is a link to the repository. Active shows a filled dot in the live ink,
-// Dormant an open one, and each also says so in text. Hovering or focusing a row is a
-// Preview (scripts/preview.ts): here it only styles the row. scripts/home.ts opens a plain
-// click or Enter through the shared Open route and reveals "Opened ↗".
+// The asset board: one row per public repository, as the Sensor CMYK prototype drew it
+// (prototype/defense at c3d5057, ?d=4). Each row is a link to the repository: its number
+// (01..., the A-01... tag in the view), the name in capitals over its description, the
+// stack, the telemetry bars, the commit count and the uplink date. Active shows a filled dot
+// in the live ink before the date, Dormant an open one, and each also says so in text.
+// Hovering or focusing a row is a Preview (scripts/preview.ts): here it only styles the
+// row. scripts/home.ts opens a plain click or Enter through the shared Open route and
+// reveals "Opened ↗".
 //
 // What the scripts read: `a[data-asset]` is the row (its index), with data-tag, data-name,
 // data-language, data-commits, data-pushed, data-status="active|dormant" (an AssetStatus),
 // and data-opened="true" once opened. scripts/assets.ts parses them back into Asset objects.
+// scripts/motion.ts counts up `.commits`, which holds the number alone.
 import type { Repo } from '../lib/github';
-import { assetTag, dotDate, languageOf, plural, statusOf } from '../lib/format';
+import { assetNo, assetTag, dotDate, languageOf, statusOf } from '../lib/format';
 import Wave from './Wave.astro';
 
 interface Props {
@@ -22,12 +26,12 @@ const max = Math.max(1, ...repos.flatMap((r) => r.wave));
 
 <div class="board">
   <div class="row head" aria-hidden="true">
-    <span class="c-tag">Tag</span>
+    <span class="c-num">#</span>
     <span class="c-name">Asset</span>
-    <span class="c-lang">Language</span>
-    <span class="c-wave">Activity</span>
+    <span class="c-lang">Stack</span>
+    <span class="c-wave">Telemetry</span>
     <span class="c-commits">Commits</span>
-    <span class="c-date">Last push</span>
+    <span class="c-date">Uplink</span>
   </div>
   <ol class="list">
     {
@@ -47,21 +51,27 @@ const max = Math.max(1, ...repos.flatMap((r) => r.wave));
               data-pushed={dotDate(r.pushedAt)}
               data-status={status}
             >
-              <span class="c-tag tag">
-                <span class="mark" aria-hidden="true">{active ? '●' : '○'}</span>
-                <span class="tag-no">{assetTag(i)}</span>
-              </span>
+              <span class="c-num tag-no">{assetNo(i)}</span>
               <span class="c-name">
-                <b class="name">{r.name}</b>
-                <span class="visually-hidden">{active ? 'Active' : 'Dormant'}</span>
-                <span class="opened" hidden>Opened ↗</span>
+                <span class="title">
+                  <b class="name">{r.name}</b>
+                  <span class="visually-hidden">{active ? 'Active' : 'Dormant'}</span>
+                  <span class="opened" hidden>Opened ↗</span>
+                </span>
+                {r.description && <small class="desc">{r.description}</small>}
               </span>
               <span class="c-lang lang">{languageOf(r)}</span>
               <span class="c-wave">
                 <Wave wave={r.wave} max={max} />
               </span>
-              <span class="c-commits commits">{plural(r.commits, 'commit')}</span>
-              <span class="c-date date">{dotDate(r.pushedAt)}</span>
+              <span class="c-commits">
+                <span class="commits">{r.commits}</span>
+                <span class="visually-hidden">{r.commits === 1 ? ' commit' : ' commits'}</span>
+              </span>
+              <span class="c-date">
+                <span class="mark" aria-hidden="true">{active ? '●' : '○'}</span>
+                <span class="date">{dotDate(r.pushedAt)}</span>
+              </span>
             </a>
           </li>
         );
@@ -71,65 +81,75 @@ const max = Math.max(1, ...repos.flatMap((r) => r.wave));
 </div>
 
 <style>
-  /* Phones: tag spans two lines; name and commits on the first, language and date below. */
+  /* Phones: number, then the name over its description, then the count over the uplink. */
   .row {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    grid-template-areas: 'tag name commits' 'tag lang date';
-    gap: 2px 16px;
-    align-items: baseline;
-    padding: 12px 10px;
+    grid-template-columns: 2rem minmax(0, 1fr) auto;
+    grid-template-areas: 'num name commits' 'num name date';
+    gap: 2px 14px;
+    align-items: center;
+    padding: 10px;
   }
-  .c-tag { grid-area: tag; }
+  .c-num { grid-area: num; }
   .c-name { grid-area: name; }
-  .c-lang { grid-area: lang; }
+  .c-lang { display: none; grid-area: lang; }
+  .c-wave { display: none; grid-area: wave; }
   .c-commits { grid-area: commits; text-align: right; }
   .c-date { grid-area: date; text-align: right; }
-  .c-wave { display: none; grid-area: wave; }
   @media (min-width: 760px) {
     .row {
-      grid-template-columns: 6.5rem minmax(0, 2.2fr) 7rem minmax(0, 1.6fr) 6.5rem 6.5rem;
-      grid-template-areas: 'tag name lang wave commits date';
-      align-items: center;
+      grid-template-columns: 2.5rem minmax(0, 2.4fr) 7rem minmax(0, 1.6fr) 4.5rem 7.5rem;
+      grid-template-areas: 'num name lang wave commits date';
       gap: 16px;
-      padding: 10px 12px;
+      padding: 8px 10px;
     }
-    .c-wave { display: block; }
+    .c-lang, .c-wave { display: block; }
   }
   .list { list-style: none; margin: 0; padding: 0; }
   .list li { border-bottom: 1px solid var(--line); }
-  .head {
+  /* .row.head: the column heads share the row grid, and must outrank .row's text colour. */
+  .row.head {
     display: none;
-    padding-top: 0;
     padding-bottom: 8px;
     border-bottom: 1px solid var(--line-strong);
-    font: 700 12px/1.4 var(--ui);
+    font: 700 12px/1.4 var(--body);
     letter-spacing: 0.12em;
     text-transform: uppercase;
+    white-space: nowrap;
     color: var(--muted);
   }
   @media (min-width: 760px) {
-    .head { display: grid; }
+    .row.head { display: grid; }
   }
-  .head .c-commits, .head .c-date { text-align: right; }
 
   .row { position: relative; color: var(--fg); text-decoration: none; }
-  .tag { display: inline-flex; align-items: baseline; gap: 8px; white-space: nowrap; }
-  /* The mark is a character, so it takes the text inks: Active cyan, Dormant grey. */
-  .mark { font: 400 14px/1 var(--body); color: var(--muted); }
-  [data-status='active'] .mark { color: var(--ink-c-text); }
-  .tag-no { font: 400 13px/1 var(--ui); letter-spacing: 0.08em; }
-  .name { display: inline-block; font: 500 15px/1.3 var(--ui); overflow-wrap: anywhere; }
-  .opened { margin-left: 10px; font: 400 12px/1.3 var(--body); color: var(--muted); white-space: nowrap; }
-  .lang, .date { font: 400 13px/1.4 var(--body); color: var(--muted); }
+  .tag-no { font: 400 13px/1 var(--ui); letter-spacing: 0.08em; text-align: center; }
+  .head .c-num { text-align: center; }
+  .c-name { display: flex; flex-direction: column; min-width: 0; }
+  .title { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+  .name {
+    display: inline-block;
+    font: 700 15px/1.3 var(--body);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    overflow-wrap: anywhere;
+  }
+  .desc { font: 400 12px/1.45 var(--body); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .opened { font: 700 12px/1.3 var(--body); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+  .lang { font: 400 13px/1.4 var(--body); color: var(--muted); }
   .commits { font: 600 13px/1.4 var(--wide); }
-  .c-wave { color: var(--muted); }
-  [data-status='active'] .c-wave { color: var(--ink-c-text); }
+  .c-date { white-space: nowrap; }
+  .date { font: 400 12px/1.4 var(--body); color: var(--muted); }
+  /* The mark is a character, so it takes the text inks: Active cyan, Dormant grey. */
+  .mark { margin-right: 6px; font: 400 12px/1 var(--body); color: var(--muted); }
+  [data-status='active'] .mark { color: var(--ink-c-text); }
+  /* Telemetry is K: the terrain's mid grey, brightening to the text colour on a Preview. */
+  .list .c-wave { color: var(--terrain-2); }
 
   /* Preview hooks: pointer or focus on a row. Magenta number, magenta brackets and a faint
-     magenta tint; focus also draws the 2 px ring. */
-  .row::before,
-  .row::after {
+     magenta tint; focus also draws the 2 px ring. The column heads share the grid, not this. */
+  .list .row::before,
+  .list .row::after {
     content: '';
     position: absolute;
     top: 3px;
@@ -139,21 +159,19 @@ const max = Math.max(1, ...repos.flatMap((r) => r.wave));
     opacity: 0;
     pointer-events: none;
   }
-  .row::before { left: 0; border-width: 2px 0 2px 2px; }
-  .row::after { right: 0; border-width: 2px 2px 2px 0; }
-  .row:is(:hover, :focus-visible, [data-previewed='true']) {
+  .list .row::before { left: 0; border-width: 2px 0 2px 2px; }
+  .list .row::after { right: 0; border-width: 2px 2px 2px 0; }
+  .list .row:is(:hover, :focus-visible, [data-previewed='true']) {
     background: color-mix(in srgb, var(--ink-m) 7%, transparent);
     &::before,
     &::after { opacity: 1; }
     .tag-no { color: var(--ink-m-text); }
     /* The live dot darkens toward the text colour so it keeps 4.5:1 on the magenta tint. */
     &[data-status='active'] .mark { color: color-mix(in srgb, var(--ink-c-text) 65%, var(--fg)); }
-    /* The activity bars brighten: the text colour, or the live ink mixed toward it. */
     .c-wave { color: var(--fg); }
-    &[data-status='active'] .c-wave { color: color-mix(in srgb, var(--ink-c-text) 65%, var(--fg)); }
     /* The title steps right. */
     @media (prefers-reduced-motion: no-preference) {
-      .name { translate: 6px 0; }
+      .title { translate: 6px 0; }
     }
   }
   /* A visible 2 px ring in the focus ink, outside the row and so beyond its corner
@@ -196,7 +214,7 @@ const max = Math.max(1, ...repos.flatMap((r) => r.wave));
       }
     }
     /* Preview: the title steps right; the bars take their colour over 300 ms. */
-    .name { transition: translate 220ms cubic-bezier(0.16, 1, 0.3, 1); }
+    .title { transition: translate 220ms cubic-bezier(0.16, 1, 0.3, 1); }
     .c-wave { transition: color 300ms linear; }
     /* Open: the row flashes magenta once. */
     .row.flash { animation: flash 600ms ease-out; }

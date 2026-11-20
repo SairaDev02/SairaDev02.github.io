@@ -44,10 +44,17 @@ Light is the default and the fallback without script. Dark replaces every value.
 | `--line` / `--line-strong` | K at 18% / 26% | K at 18% / 26% | 1 px hairlines |
 
 - Square corners. 1 px hairlines in K at 12 to 26% strength.
-- A few legacy names (`--accent`, `--on-accent`, `--sun`, `--sun-core`, `--on-sun`,
-  `--shade-0` to `-3`, `--glass`) remain, mapped onto these tokens in `global.css`. The
-  shared Button, the header, the 404 card and the dev-only link-preview route
-  (`src/dev/og-card.astro`) still use them; new code uses the tokens above.
+- A few legacy names (`--accent`, `--on-accent`, `--sun`, `--on-sun`, `--glass`) remain,
+  mapped onto these tokens in `global.css`. The shared Button and the 404 card still use
+  them; new code uses the tokens above.
+
+## Link preview card and icons
+
+- The link preview card (`src/dev/og-card.astro`, exported by `npm run og:export`) is the
+  sensor view as one still frame on key black, with placeholder Assets (one live, one in
+  focus) above the operator block set large. It never shows repository data.
+- The favicon (`public/favicon.svg`, rasterised by `npm run icons:export`) is a live Asset
+  marker in focus brackets on key black: cyan diamond, grey mast, magenta brackets.
 
 ## Light multiplies, Dark replaces
 
