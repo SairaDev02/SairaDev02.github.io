@@ -2,7 +2,9 @@
 import type { Repo } from './github';
 
 /** An Asset's tag from its zero-based index: 0 -> "A-01". */
-export const assetTag = (i: number) => `A-${String(i + 1).padStart(2, '0')}`;
+/** The board number, "01" onwards; the Asset's tag in the view is "A-" and this number. */
+export const assetNo = (i: number) => String(i + 1).padStart(2, '0');
+export const assetTag = (i: number) => `A-${assetNo(i)}`;
 
 /** "2026-11-12T…" -> "2026.11.12"; missing -> "—". */
 export const dotDate = (iso: string | null) => (iso ? iso.slice(0, 10).replaceAll('-', '.') : '—');

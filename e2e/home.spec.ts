@@ -35,7 +35,9 @@ test.describe('page content', () => {
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('SairaDev02');
 
     await expect(rows(page).locator('.name')).toHaveText(['tidepool', 'paper-lantern', 'quiet-notes', 'empty-box']);
-    await expect(rows(page).locator('.tag-no')).toHaveText(['A-01', 'A-02', 'A-03', 'A-04']);
+    // The board numbers match the view's tags, A-01 onwards.
+    await expect(rows(page).locator('.tag-no')).toHaveText(['01', '02', '03', '04']);
+    expect(await rows(page).evaluateAll((rs) => rs.map((r) => r.getAttribute('data-tag')))).toEqual(['A-01', 'A-02', 'A-03', 'A-04']);
     await expect(rows(page).first()).toHaveAttribute('href', 'https://github.com/SairaDev02/tidepool');
     await expect(page.getByText('forked-lib')).toHaveCount(0);
     await expect(rows(page).filter({ hasText: 'SairaDev02.github.io' })).toHaveCount(0);
@@ -58,13 +60,16 @@ test.describe('page content', () => {
     await expect(row(page, 1)).toContainText('Dormant');
   });
 
-  test('shows language, commits and last push on each row, filling gaps in the data', async ({ page }) => {
+  test('shows description, stack, commits and uplink on each row, filling gaps in the data', async ({ page }) => {
+    await expect(row(page, 0).locator('.desc')).toHaveText('Command-line synthesiser for tide charts.');
     await expect(row(page, 0).locator('.lang')).toHaveText('Rust');
-    await expect(row(page, 0).locator('.commits')).toContainText('5');
+    await expect(row(page, 0).locator('.commits')).toHaveText('5');
     await expect(row(page, 0).locator('.date')).toHaveText('2026.10.20');
-    // No language and one commit: the row says Text and the singular.
+    // No description, no language and one commit: no description line, Text, and the
+    // singular for a screen reader.
+    await expect(row(page, 2).locator('.desc')).toHaveCount(0);
     await expect(row(page, 2).locator('.lang')).toHaveText('Text');
-    await expect(row(page, 2).locator('.commits')).toHaveText(/^\s*1\s*commit\s*$/);
+    await expect(row(page, 2).locator('.c-commits')).toHaveText(/^\s*1\s*commit\s*$/);
     await expect(row(page, 3).locator('.commits')).toContainText('0');
   });
 

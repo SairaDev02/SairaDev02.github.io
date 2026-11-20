@@ -36,7 +36,7 @@ test.describe('reduced motion', () => {
   test('a previewed title does not move', async ({ page }) => {
     await page.goto('/');
     await row(page, 1).focus();
-    const translate = await row(page, 1).locator('.name').evaluate((n) => getComputedStyle(n).translate);
+    const translate = await row(page, 1).locator('.title').evaluate((n) => getComputedStyle(n).translate);
     expect(translate).toBe('none');
   });
 
@@ -44,7 +44,7 @@ test.describe('reduced motion', () => {
     await page.goto('/');
     // Read in the same task as the load, with no waiting for a count to finish.
     const counts = await page.evaluate(() => [...document.querySelectorAll('.commits')].map((c) => c.textContent?.trim()));
-    expect(counts).toEqual(['5 commits', '3 commits', '1 commit', '0 commits']);
+    expect(counts).toEqual(['5', '3', '1', '0']);
   });
 
   test('the label line, stats line and column heads are never rewritten', async ({ page }) => {
@@ -81,7 +81,7 @@ test.describe('motion allowed', () => {
     });
     await page.goto('/');
     // Past the end of the load sequence: the decode and the counts are done.
-    await expect(page.locator('.commits').first()).toHaveText('5 commits', { timeout: 5000 });
+    await expect(page.locator('.commits').first()).toHaveText('5', { timeout: 5000 });
     await page.waitForTimeout(1200);
     expect(await page.evaluate(() => (window as unknown as { hits: string[] }).hits)).toEqual([]);
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('SairaDev02');
@@ -92,7 +92,7 @@ test.describe('motion allowed', () => {
     await page.goto('/');
     // With the sensor view above, rows may all be below the fold: a scroll-driven reveal counts.
     expect(await boardAnimations(page, true)).toContain('row-in');
-    await expect(page.locator('.commits')).toHaveText(['5 commits', '3 commits', '1 commit', '0 commits'], { timeout: 5000 });
+    await expect(page.locator('.commits')).toHaveText(['5', '3', '1', '0'], { timeout: 5000 });
     await expect.poll(() => boardAnimations(page)).toEqual([]);
   });
 
@@ -110,7 +110,7 @@ test.describe('motion allowed', () => {
     await page.goto('/');
     await row(page, 1).hover();
     await expect
-      .poll(() => row(page, 1).locator('.name').evaluate((n) => getComputedStyle(n).translate))
+      .poll(() => row(page, 1).locator('.title').evaluate((n) => getComputedStyle(n).translate))
       .toBe('6px');
   });
 
