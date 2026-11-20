@@ -6,6 +6,7 @@ import { getImage } from 'astro:assets';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import AssetBoard from '../components/AssetBoard.astro';
 import OperatorBlock from '../components/OperatorBlock.astro';
+import SensorView from '../components/SensorView.astro';
 import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import ogCard from '../assets/og-card.png';
@@ -39,7 +40,7 @@ const ogImage = await getImage({ src: ogCard, format: 'png' });
     <div class="visually-hidden" role="status" data-status></div>
     <SiteHeader lastPush={lastPush} />
     <main>
-      <!-- SENSOR VIEW GOES HERE: between the header and the operator block (ticket #61). -->
+      <SensorView />
       <OperatorBlock repos={repos} active={active} lastPush={lastPush} />
       <section class="wrap board" id="repositories" tabindex="-1" aria-label="Repositories">
         <AssetBoard repos={repos} now={now} />
@@ -51,6 +52,7 @@ const ogImage = await getImage({ src: ogCard, format: 'png' });
 
 <script>
   import '../scripts/home';
+  import '../scripts/sensor/boot';
 </script>
 
 <style>
