@@ -1,5 +1,14 @@
 // @ts-check
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { defineConfig } from 'astro/config';
+
+// The pre-paint theme script that BaseLayout inlines verbatim. Astro does not hash
+// `is:inline` scripts, so its hash is added to the policy below. Browsers hash the text
+// with LF newlines, whatever the checkout's line endings.
+const themeInit = readFileSync(new URL('./src/scripts/theme-init.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+/** @type {`sha256-${string}`} */
+const themeInitHash = `sha256-${createHash('sha256').update(themeInit).digest('base64')}`;
 
 /**
  * Serves the link preview card's source at /og-card in dev only. The page lives outside
@@ -36,6 +45,7 @@ export default defineConfig({
         "require-trusted-types-for 'script'",
         "trusted-types 'none'",
       ],
+      scriptDirective: { hashes: [themeInitHash] },
       // Astro hashes the inline styles and scripts it emits; CdPlayer.astro adds the hash
       // of its own inline style element. The pages carry no style attributes, so nothing
       // needs `'unsafe-inline'`.

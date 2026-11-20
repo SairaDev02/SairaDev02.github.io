@@ -1,5 +1,6 @@
 ---
-// Handle with a barcode, last-push readout and the main navigation.
+// Handle with a barcode, last-push readout, the main navigation and the theme setting.
+import ThemeSetting from './ThemeSetting.astro';
 import { GITHUB_USER } from '../lib/github';
 import { READY_SECTIONS } from '../lib/sections';
 
@@ -20,7 +21,8 @@ const bars = [...GITHUB_USER].flatMap((ch) => {
 });
 ---
 
-<header class:list={['wrap', 'top', { 'no-push': !lastPush }]}>
+<header class="top">
+<div class:list={['wrap', 'bar', { 'no-push': !lastPush }]}>
   <a class="brand" href="/">
     <span class="label">{GITHUB_USER} <sup>™</sup></span>
     <span class="barcode" aria-hidden="true">
@@ -39,21 +41,29 @@ const bars = [...GITHUB_USER].flatMap((ch) => {
       <a href={s.href} aria-current={s.href === Astro.url.pathname ? 'page' : undefined}>{s.label}</a>
     ))}
   </nav>
+  <ThemeSetting />
+</div>
 </header>
 
 <style>
-  .top {
+  /* Sticky on wide screens; on phones it scrolls away. The stock behind it keeps content
+     from showing through. */
+  .top { background: var(--bg); border-bottom: 1px solid var(--line); }
+  @media (min-width: 900px) {
+    .top { position: sticky; top: 0; z-index: 50; }
+  }
+  .bar {
     display: grid;
-    grid-template-columns: 1fr auto;
+    grid-template-columns: minmax(0, 1fr);
     gap: 16px 24px;
     align-items: center;
-    padding-top: 20px;
-    padding-bottom: 20px;
+    padding-top: 16px;
+    padding-bottom: 16px;
   }
+  /* Brand, last push, navigation, theme setting: four columns. */
   @media (min-width: 900px) {
-    .top { grid-template-columns: 1fr 1fr auto; }
-    /* Two children instead of three: the navigation still ends at the right edge. */
-    .top.no-push { grid-template-columns: 1fr auto; }
+    .bar { grid-template-columns: 1fr 1fr auto auto; }
+    .bar.no-push { grid-template-columns: 1fr auto auto; }
   }
   .brand {
     display: flex;
@@ -63,7 +73,7 @@ const bars = [...GITHUB_USER].flatMap((ch) => {
     width: fit-content;
   }
   .barcode { display: flex; height: 18px; }
-  .barcode i { display: block; height: 100%; margin-right: 2px; background: var(--accent); }
+  .barcode i { display: block; height: 100%; margin-right: 2px; background: var(--fg); }
   /* Bars come in threes, one per handle character: a wider gap after each group. */
   .barcode i:nth-child(3n) { margin-right: 3px; }
   .barcode .w1 { width: 2px; }
@@ -75,8 +85,8 @@ const bars = [...GITHUB_USER].flatMap((ch) => {
     .push { display: flex; }
   }
   .dots { display: inline-flex; gap: 5px; }
-  .dots b { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
-  .dots b.lit { background: var(--sun); }
+  .dots b { width: 10px; height: 10px; background: var(--fg); }
+  .dots b.lit { background: var(--ink-c); }
 
   .nav { display: flex; }
   .nav a {
@@ -89,16 +99,12 @@ const bars = [...GITHUB_USER].flatMap((ch) => {
     margin-left: -1px;
     text-decoration: none;
   }
-  .nav a:first-child { margin-left: 0; border-radius: 999px 0 0 999px; }
-  .nav a:last-child { border-radius: 0 999px 999px 0; }
-  .nav a:hover { background: var(--sun); color: var(--on-sun); position: relative; }
+  .nav a:first-child { margin-left: 0; }
+  .nav a:hover { background: var(--ink-y); color: var(--on-sun); position: relative; }
   .nav a[aria-current='page'] {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: var(--on-accent);
+    background: var(--fg);
+    border-color: var(--fg);
+    color: var(--bg);
     position: relative;
-  }
-  @media (max-width: 599px) {
-    .top { grid-template-columns: minmax(0, 1fr); }
   }
 </style>

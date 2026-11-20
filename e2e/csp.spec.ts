@@ -155,10 +155,10 @@ test.describe('nothing is blocked', () => {
     await page.goto('/');
 
     // The inlined stylesheet applies: the body font comes from global.css and the barcode
-    // bars take their colour from its `--accent` token.
+    // bars take their colour from its `--fg` token.
     expect(await page.evaluate(() => getComputedStyle(document.body).fontFamily)).toContain('IBM Plex Mono');
     expect(await page.locator('.barcode i').first().evaluate((bar) => getComputedStyle(bar).backgroundColor)).toBe(
-      'rgb(29, 63, 208)',
+      'rgb(27, 27, 28)',
     );
 
     // The barcode's bar widths and the player's grid size apply. A blocked rule leaves

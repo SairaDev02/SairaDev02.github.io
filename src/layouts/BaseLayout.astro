@@ -16,6 +16,7 @@ import '../styles/global.css';
 // canvas waits for Pixelify Sans before it can draw its lettering.
 import lexendExa from '@fontsource-variable/lexend-exa/files/lexend-exa-latin-wght-normal.woff2?url';
 import pixelify from '@fontsource-variable/pixelify-sans/files/pixelify-sans-latin-wght-normal.woff2?url';
+import themeInit from '../scripts/theme-init.js?raw';
 import { SITE } from '../lib/site';
 
 interface Props {
@@ -39,6 +40,8 @@ const imageUrl = image && new URL(image.src, SITE.url).href;
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <!-- Blocking on purpose: sets the theme before first paint. Its hash is in astro.config.mjs. -->
+    <script is:inline set:html={themeInit} />
     <title>{title}</title>
     <meta name="description" content={description} />
     <meta property="og:title" content={title} />
@@ -59,7 +62,8 @@ const imageUrl = image && new URL(image.src, SITE.url).href;
     )}
     <meta name="twitter:card" content="summary_large_image" />
     {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
-    <meta name="theme-color" content="#dfe9fb" />
+    <meta name="theme-color" content="#f2efe6" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0a0c0e" media="(prefers-color-scheme: dark)" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="icon" href="/favicon.ico" sizes="32x32" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />

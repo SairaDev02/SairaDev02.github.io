@@ -1,0 +1,57 @@
+---
+// The theme setting: a fieldset of three native radios. System is checked in the markup;
+// src/scripts/theme.ts checks the stored choice and applies changes. Each radio is the
+// invisible hit area laid over its label, so the whole label (at least 24x24) is the target.
+const options = [
+  ['system', 'System'],
+  ['light', 'Light'],
+  ['dark', 'Dark'],
+] as const;
+---
+
+<fieldset class="theme">
+  <legend class="visually-hidden">Colour theme</legend>
+  {
+    options.map(([value, label]) => (
+      <label>
+        <input type="radio" name="theme" value={value} checked={value === 'system'} />
+        <span>{label}</span>
+      </label>
+    ))
+  }
+</fieldset>
+
+<script>
+  import '../scripts/theme';
+</script>
+
+<style>
+  .theme {
+    display: flex;
+    justify-self: start;
+    width: fit-content;
+    min-inline-size: 0;
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--line-strong);
+  }
+  label { position: relative; display: grid; place-items: center; cursor: pointer; }
+  input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
+  span {
+    min-height: 32px;
+    padding: 0 10px;
+    display: inline-flex;
+    align-items: center;
+    font: 700 12px/1 var(--body);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  label:hover span { color: var(--fg); }
+  input:checked + span { background: var(--fg); color: var(--bg); }
+  input:focus-visible + span { outline: 2px solid var(--ink-m); outline-offset: 2px; }
+  /* Forced colours drop background fills: keep the selected option visible by outline. */
+  @media (forced-colors: active) {
+    input:checked + span { outline: 2px solid Highlight; outline-offset: -2px; }
+  }
+</style>

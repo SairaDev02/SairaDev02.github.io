@@ -67,6 +67,19 @@ test.describe('axe scan', () => {
   });
 });
 
+test.describe('axe scan in both themes', () => {
+  for (const scheme of ['light', 'dark'] as const) {
+    for (const path of ['/', '/no-such-track']) {
+      test(`${path} has no violations in ${scheme}`, async ({ page }) => {
+        await page.emulateMedia({ colorScheme: scheme });
+        await page.goto(path);
+        const results = await new AxeBuilder({ page }).analyze();
+        expect(violations(results)).toEqual([]);
+      });
+    }
+  }
+});
+
 test.describe('skip link', () => {
   test('is the first stop, revealed on focus, and moves focus to the track list', async ({ page }) => {
     await page.goto('/');

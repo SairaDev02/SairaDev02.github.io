@@ -129,7 +129,7 @@ const max = Math.max(1, ...repos.flatMap((r) => r.wave));
   .list .row:global(.cued) {
     box-shadow: 0 0 0 1px var(--cue), 0 0 22px 4px color-mix(in srgb, var(--cue) 55%, transparent);
   }
-  .list .row:global(.cued:not(.on)) { background: color-mix(in srgb, var(--cue) 18%, transparent); }
+  .list .row:global(.cued:not(.on)) { background: color-mix(in srgb, var(--cue) 10%, transparent); }
   /* A preview (a pointer over the row or focus on it) is a soft, blurred yellow wash behind
      the row, not a fill: the fill belongs to the play. */
   .list .row { position: relative; isolation: isolate; }

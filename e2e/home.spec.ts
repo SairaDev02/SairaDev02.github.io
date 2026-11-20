@@ -166,18 +166,18 @@ test.describe('preview and cue marks', () => {
       background: getComputedStyle(el).backgroundColor,
     }));
 
-  test('the cued row carries a steady light blue glow box', async ({ page }) => {
-    // DESIGN.md's token, and the one row that carries it while nothing plays.
+  test('the cued row carries a steady magenta glow box', async ({ page }) => {
+    // the focus ink in DESIGN.md, and the one row that carries it while nothing plays.
     expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--cue').trim())).toBe(
-      '#78a0f5',
+      '#e6007e',
     );
     const cued = page.locator('[data-track="0"]');
     await expect(cued).toHaveClass(/\bcued\b/);
 
     const { shadow, background } = await mark(cued);
-    expect(shadow).toContain('rgb(120, 160, 245)');
+    expect(shadow).toContain('rgb(230, 0, 126)');
     // A faint fill while idle, not the solid yellow: that one is for the playing row.
-    expect(background).not.toBe('rgb(255, 214, 10)');
+    expect(background).not.toBe('rgb(255, 229, 0)');
 
     // The marker follows the Cue, and only the cued row has a box.
     await page.getByRole('button', { name: 'Next: paper-lantern' }).click();
@@ -194,7 +194,7 @@ test.describe('preview and cue marks', () => {
       const before = getComputedStyle(el, '::before');
       return { color: before.backgroundColor, filter: before.filter };
     });
-    expect(wash.color).toBe('rgb(255, 214, 10)'); // var(--sun), blurred rather than solid
+    expect(wash.color).toBe('rgb(255, 229, 0)'); // var(--sun), blurred rather than solid
     expect(wash.filter).toContain('blur');
   });
 });
@@ -384,7 +384,7 @@ test.describe('playing a track', () => {
     // The playing row keeps the solid yellow fill that a preview only washes towards.
     const playing = page.locator('[data-track="1"]');
     await expect(playing).toHaveClass(/\bon\b/);
-    expect(await playing.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgb(255, 214, 10)');
+    expect(await playing.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgb(255, 229, 0)');
   });
 
   test('Prev and Next during a play open a new tab and swap the disc', async ({ page, context }) => {
