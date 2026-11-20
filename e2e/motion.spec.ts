@@ -6,12 +6,15 @@ import { expect, test } from './test';
 
 const row = (page: Page, i: number) => page.locator(`[data-asset="${i}"]`);
 /** Animations running on the board or its descendants, pseudo-elements included. */
-const boardAnimations = (page: Page) =>
-  page.evaluate(() =>
+const boardAnimations = (page: Page, scrollDriven = false) =>
+  page.evaluate((withScroll) =>
     document
       .querySelector('.board')!
       .getAnimations({ subtree: true })
+      // Scroll-driven reveals (rows below the fold) wait for scrolling: they are not running.
+      .filter((a) => withScroll || a.timeline instanceof DocumentTimeline)
       .map((a) => (a as CSSAnimation).animationName ?? 'transition'),
+    scrollDriven,
   );
 
 test.describe('reduced motion', () => {
@@ -49,8 +52,9 @@ test.describe('reduced motion', () => {
       const hits: string[] = [];
       (window as unknown as { hits: string[] }).hits = hits;
       document.addEventListener('DOMContentLoaded', () => {
-        new MutationObserver((ms) => ms.forEach((m) => hits.push(String((m.target as Element).className || m.target.nodeName))))
-          .observe(document.querySelector('main')!, { subtree: true, childList: true, characterData: true });
+        // The operator block and the board; the sensor view's HUD updates by design.
+        const observer = new MutationObserver((ms) => ms.forEach((m) => hits.push(String((m.target as Element).className || m.target.nodeName))));
+        for (const el of document.querySelectorAll('.operator, .board')) observer.observe(el, { subtree: true, childList: true, characterData: true });
       });
     });
     await page.goto('/');
@@ -86,7 +90,8 @@ test.describe('motion allowed', () => {
 
   test('rows reveal on load, and commit counts settle on their final values', async ({ page }) => {
     await page.goto('/');
-    expect(await boardAnimations(page)).toContain('row-in');
+    // With the sensor view above, rows may all be below the fold: a scroll-driven reveal counts.
+    expect(await boardAnimations(page, true)).toContain('row-in');
     await expect(page.locator('.commits')).toHaveText(['5 commits', '3 commits', '1 commit', '0 commits'], { timeout: 5000 });
     await expect.poll(() => boardAnimations(page)).toEqual([]);
   });

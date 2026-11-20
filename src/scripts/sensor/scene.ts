@@ -239,10 +239,10 @@ export function mountSensor(frame: HTMLElement) {
   const card = make('div', 'card');
   card.dataset.sensorCard = '';
   card.hidden = true;
-  const cardStatus = make('b', 'status');
-  const cardName = make('strong', 'name');
-  const cardMeta = make('span', 'line');
-  const cardSeen = make('span', 'line');
+  const cardStatus = make('b', 'card-status');
+  const cardName = make('strong', 'card-name');
+  const cardMeta = make('span', 'card-line');
+  const cardSeen = make('span', 'card-line');
   card.append(cardStatus, cardName, cardMeta, cardSeen);
   hud.append(hint, clock, coord, count, crossX, crossY, lock);
   const tags = assets.map((asset) => {
