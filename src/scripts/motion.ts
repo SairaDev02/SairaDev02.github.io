@@ -12,7 +12,10 @@ import { onPreview } from './preview';
 
 const motionOK = matchMedia('(prefers-reduced-motion: no-preference)');
 const GLYPHS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#%/<>[]=+';
-const raf = (fn: FrameRequestCallback) => requestAnimationFrame(fn);
+/** The board's load sequence, in ms: the first row starts at FIRST_ROW, each next one ROW_STAGGER later. */
+const FIRST_ROW = 420;
+const ROW_STAGGER = 70;
+const raf =(fn: FrameRequestCallback) => requestAnimationFrame(fn);
 
 /** Runs `render(progress)` every frame from `delay` for `ms`, drawing into an overlay. */
 function animateText(el: HTMLElement, delay: number, ms: number, render: (k: number, final: string) => string) {
@@ -57,10 +60,17 @@ function initBoard() {
   const items = rows.map((row) => row.closest('li')!);
 
   // Rows below the fold at load reveal on a view timeline as they scroll in; the others on
-  // the load sequence. Measured after layout, once the view's box is in place.
+  // the load sequence, each ROW_STAGGER after the last from FIRST_ROW. Measured after
+  // layout, once the view's box is in place. Rows that keep the time-based reveal for want
+  // of view timelines wait for the end of the sequence.
   raf(() =>
     raf(() => {
-      for (const li of items) if (li.getBoundingClientRect().top > innerHeight) li.classList.add('later');
+      const onScreen = items.filter((li) => li.getBoundingClientRect().top <= innerHeight);
+      items.forEach((li) => {
+        const place = onScreen.indexOf(li);
+        if (place < 0) li.classList.add('later');
+        li.style.setProperty('--row-delay', `${FIRST_ROW + ROW_STAGGER * (place < 0 ? onScreen.length : place)}ms`);
+      });
     }),
   );
   // Each row reveals once: when its animation ends, the settled state stays.

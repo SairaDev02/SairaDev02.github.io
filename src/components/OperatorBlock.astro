@@ -41,7 +41,8 @@ const languages = [...new Set(repos.map((r) => r.language).filter((l) => l !== n
   .frame img { display: block; width: 96px; height: 96px; object-fit: cover; }
   .id .label { font-size: 12px; letter-spacing: 0.12em; color: var(--muted); }
   .text { min-width: 0; }
-  .text p { margin: 0; }
+  /* :where() keeps this reset at the specificity of one class, so the .chip and .stats margins below win. */
+  .text :where(p) { margin: 0; }
   h1 {
     margin: 4px 0 0;
     font: 600 clamp(1.8rem, 6.4vw, 3.3rem) / 1 var(--wide);
@@ -54,7 +55,7 @@ const languages = [...new Set(repos.map((r) => r.language).filter((l) => l !== n
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    margin-top: 14px !important;
+    margin-top: 14px;
     padding: 5px 10px;
     border: 1px solid var(--ink-c-text);
     font: 700 12px/1 var(--body);
@@ -63,7 +64,7 @@ const languages = [...new Set(repos.map((r) => r.language).filter((l) => l !== n
     color: var(--ink-c-text);
   }
   .dot { width: 8px; height: 8px; background: var(--ink-c-text); }
-  .stats { margin-top: 12px !important; font: 400 13px/1.6 var(--body); letter-spacing: 0.04em; color: var(--muted); }
+  .stats { margin-top: 12px; font: 400 13px/1.6 var(--body); letter-spacing: 0.04em; color: var(--muted); }
   @media (min-width: 600px) {
     .frame img { width: 128px; height: 128px; }
   }
