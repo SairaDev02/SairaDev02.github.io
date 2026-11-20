@@ -120,9 +120,15 @@ test.describe('motion allowed', () => {
     });
     await page.goto('/');
     await expect.poll(() => boardAnimations(page)).toEqual([]);
+    // Record the flash as it starts: it lasts 600 ms, so on a slow runner it can be over
+    // before a later getAnimations() call would see it.
+    await row(page, 1).evaluate((r) => {
+      r.addEventListener('animationstart', (e) => {
+        if (e.target === r) r.dataset.started = (e as AnimationEvent).animationName;
+      });
+    });
     await row(page, 1).click();
     await expect(row(page, 1)).toHaveAttribute('data-opened', 'true');
-    const names = await row(page, 1).evaluate((r) => r.getAnimations().map((a) => (a as CSSAnimation).animationName));
-    expect(names).toContain('flash');
+    await expect(row(page, 1)).toHaveAttribute('data-started', 'flash');
   });
 });
