@@ -1,6 +1,6 @@
-// DOM plumbing for dithered canvases: palettes from CSS, the pixel ratio for whole-pixel
-// scaling, and a frame loop capped at 30 fps that waits for the first input, slows down
-// when frames are expensive, and pauses off screen and in hidden tabs.
+// DOM plumbing for dithered canvases: palettes from CSS, whole-pixel sizing, and a frame
+// loop capped at 30 fps that waits for the first input, slows down when frames are
+// expensive, and pauses off screen and in hidden tabs.
 import { packRgb, type Palette } from './dither';
 
 export const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -12,22 +12,12 @@ export function readColours(el: Element, names: readonly string[]): Palette {
 }
 
 /**
- * Keeps `--dpr` on `container` equal to the device pixel ratio, which CSS needs to size a
- * canvas to a whole multiple of its grid in device pixels (see CdPlayer.astro). Media
- * queries there guess the ratio before this runs; this corrects ratios they do not list
- * and follows changes (zoom, moving between screens).
+ * Shows a canvas holding a `w` x `h` grid at `k` device pixels per grid pixel: its CSS
+ * box is a whole number of device pixels, whatever the device pixel ratio `dpr`.
  */
-export function trackDevicePixelRatio(container: HTMLElement): () => void {
-  let mq: MediaQueryList | null = null;
-  const update = () => {
-    const dpr = window.devicePixelRatio || 1;
-    container.style.setProperty('--dpr', String(dpr));
-    mq?.removeEventListener('change', update);
-    mq = matchMedia(`(resolution: ${dpr}dppx)`);
-    mq.addEventListener('change', update);
-  };
-  update();
-  return () => mq?.removeEventListener('change', update);
+export function sizeToGrid(canvas: HTMLCanvasElement, w: number, h: number, k: number, dpr: number) {
+  canvas.style.width = `${(w * k) / dpr}px`;
+  canvas.style.height = `${(h * k) / dpr}px`;
 }
 
 /**

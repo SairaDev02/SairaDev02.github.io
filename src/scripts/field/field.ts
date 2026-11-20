@@ -8,7 +8,7 @@
 // the theme notification and the Preview are the sensor view's (render/canvas.ts, theme.ts,
 // preview.ts); the three.js import is the same chunk the view uses.
 import { Color, Mesh, PerspectiveCamera, PlaneGeometry, Scene, ShaderMaterial, Vector3, WebGLRenderer, LinearSRGBColorSpace } from 'three';
-import { frameLoop, reducedMotion } from '../render/canvas';
+import { frameLoop, reducedMotion, sizeToGrid } from '../render/canvas';
 import { BAYER_GLSL, inkOf } from '../gpu/bayer';
 import { onPreview } from '../preview';
 import { onThemeChange } from '../theme';
@@ -122,8 +122,7 @@ export function mountField() {
     const W = Math.ceil((innerWidth * dpr) / K);
     const H = Math.ceil((innerHeight * dpr) / K);
     renderer.setSize(W, H, false);
-    canvas.style.width = `${(W * K) / dpr}px`;
-    canvas.style.height = `${(H * K) / dpr}px`;
+    sizeToGrid(canvas, W, H, K, dpr);
     camera.aspect = W / H;
     camera.updateProjectionMatrix();
     loop.redraw();

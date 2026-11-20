@@ -25,5 +25,5 @@ Use three.js on the GPU, in a separate chunk that is never requested before the 
 
 - The scene chunk is about the size of three.js (budget 150 KB gzipped); the initial JS stays within 20 KB gzipped. Neither the page's text nor the board waits for it.
 - If WebGL is unavailable the view stays an empty frame and the board remains the whole interface.
-- The background field reuses `lazy.ts`, `render/canvas.ts` and `gpu/bayer.ts`.
+- The background field reuses `lazy.ts`, `render/canvas.ts` and `gpu/bayer.ts`. It loads on the same trigger as the view (`whenDue`), so it never starts before the scene's chunk would.
 - Lab numbers come from one machine; the owner confirms 30 fps on a mid-range phone by hand. If it fails, a runtime fallback (drop the field first, then hold a still frame) becomes a follow-up.
