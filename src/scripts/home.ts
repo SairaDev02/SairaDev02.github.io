@@ -11,6 +11,7 @@ const rows = boardRows();
 
 for (const row of rows) {
   const asset = assetOf(row);
+  if (!asset) continue;
   const clear = () => {
     if (getPreview() === asset.index) setPreview(null);
   };

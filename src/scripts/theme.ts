@@ -5,7 +5,7 @@
 // prefers-color-scheme. The choice lives in localStorage under `theme` as `light` or
 // `dark`; System removes the key. Storage failures fall back to System, silently.
 //
-// Subscribing (for the scenes in later slices): call `onThemeChange(listener)`. The
+// Subscribing (for the scenes): call `onThemeChange(listener)`. The
 // listener runs after the attribute has changed, inside the view transition when one is
 // used, so a scene re-reads its colours from the new custom properties and redraws. It is
 // the document event `themechange` with `detail: { theme: 'light' | 'dark' }`. It fires
@@ -13,6 +13,9 @@
 
 export type Theme = 'light' | 'dark';
 type Choice = Theme | 'system';
+
+const isChoice = (value: string): value is Choice => value === 'light' || value === 'dark' || value === 'system';
+const isTheme = (value: unknown): value is Theme => value === 'light' || value === 'dark';
 
 const KEY = 'theme';
 const EVENT = 'themechange';
@@ -24,7 +27,9 @@ export const currentTheme = (): Theme => (root.dataset.theme === 'dark' ? 'dark'
 
 /** Calls `listener` whenever the resolved theme changes. Returns a function that stops it. */
 export const onThemeChange = (listener: (theme: Theme) => void) => {
-  const handler = (e: Event) => listener((e as CustomEvent<{ theme: Theme }>).detail.theme);
+  const handler = (e: Event) => {
+    if (e instanceof CustomEvent && isTheme(e.detail?.theme)) listener(e.detail.theme);
+  };
   document.addEventListener(EVENT, handler);
   return () => document.removeEventListener(EVENT, handler);
 };
@@ -33,7 +38,7 @@ export const onThemeChange = (listener: (theme: Theme) => void) => {
 let choice: Choice = 'system';
 try {
   const stored = localStorage.getItem(KEY);
-  if (stored === 'light' || stored === 'dark') choice = stored;
+  if (isTheme(stored)) choice = stored;
 } catch {
   // Storage blocked: System.
 }
@@ -55,8 +60,8 @@ const radios = document.querySelectorAll<HTMLInputElement>('input[name="theme"]'
 for (const radio of radios) radio.checked = radio.value === choice;
 for (const radio of radios) {
   radio.addEventListener('change', () => {
-    if (!radio.checked) return;
-    choice = radio.value as Choice;
+    if (!radio.checked || !isChoice(radio.value)) return;
+    choice = radio.value;
     try {
       if (choice === 'system') localStorage.removeItem(KEY);
       else localStorage.setItem(KEY, choice);

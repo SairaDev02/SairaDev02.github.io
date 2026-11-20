@@ -17,6 +17,10 @@ export const ACTIVE_DAYS = 30;
 /** Active (pushed within the last 30 days of `now`) or Dormant. */
 export const isActive = (pushedAt: string, now: Date) => now.getTime() - Date.parse(pushedAt) <= ACTIVE_DAYS * 86_400_000;
 
+/** An Asset's status: the board's `data-status`, which scripts/assets.ts parses back. */
+export type AssetStatus = 'active' | 'dormant';
+export const statusOf = (pushedAt: string, now: Date): AssetStatus => (isActive(pushedAt, now) ? 'active' : 'dormant');
+
 /**
  * The clock that decides Active: the build time. BUILD_NOW pins it, so the e2e build has
  * fixed statuses whatever day it runs.

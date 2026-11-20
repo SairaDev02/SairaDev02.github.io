@@ -1,7 +1,7 @@
 // The Open route: the one way the page opens an Asset's repository, shared by the asset
-// board and (later) the sensor view.
+// board and the sensor view.
 //
-//   openAsset(asset)   -> true when a tab opened, false when the browser blocked it.
+//   openAsset(asset)   -> opens the Asset's repository, or announces the Blocked tab.
 //   isOpened(index)    -> whether the Asset was opened during this visit.
 //   onOpened(listener) -> calls `listener(asset)` after each successful Open; returns an
 //                         unsubscribe function. The board marks its rows through this.
@@ -39,16 +39,15 @@ const announce = (message: string) => {
   requestAnimationFrame(() => (region.textContent = message));
 };
 
-/** Opens the Asset's repository in a new tab. Returns false when the browser blocked it. */
-export function openAsset(asset: Asset): boolean {
+/** Opens the Asset's repository in a new tab; when the browser blocks it, says so and marks nothing. */
+export function openAsset(asset: Asset) {
   const win = window.open(asset.url, '_blank');
   if (!win) {
     announce(`New tab blocked. Click ${asset.name} again, or use the link's menu`);
-    return false;
+    return;
   }
   win.opener = null;
   opened.add(asset.index);
   for (const listener of listeners) listener(asset);
   announce(`Opened ${asset.name} in a new tab`);
-  return true;
 }
