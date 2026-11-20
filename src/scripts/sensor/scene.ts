@@ -137,8 +137,9 @@ const make = <K extends keyof HTMLElementTagNameMap>(tag: K, className: string, 
   return el;
 };
 
-export function mountSensor(frame: HTMLElement) {
-  const assets: Asset[] = readAssets();
+/** Mounts the view in `frame`. `assets` defaults to the board's; the dev-only link preview
+ * card (src/dev/og-card.astro) passes fixed ones, as it has no board and no repository data. */
+export function mountSensor(frame: HTMLElement, assets: Asset[] = readAssets()) {
   let renderer: WebGLRenderer;
   const canvas = make('canvas', 'sensor-canvas');
   try {

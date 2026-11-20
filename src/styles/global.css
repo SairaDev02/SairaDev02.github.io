@@ -44,15 +44,9 @@
   --field-major: #262c32;
 }
 :root {
-  /* Names the shared Button, the header's hover state, the 404 card and the dev-only
-     link-preview route (src/dev/og-card.astro) still use, mapped onto the tokens above.
+  /* Names the shared Button and the 404 card still use, mapped onto the tokens above.
      New code uses the tokens above, not these. */
-  --shade-0: var(--terrain-0);
-  --shade-1: var(--terrain-1);
-  --shade-2: var(--terrain-2);
-  --shade-3: var(--terrain-3);
   --sun: var(--ink-y);
-  --sun-core: var(--ink-y);
   --on-sun: #1b1b1c;
   --accent: var(--fg);
   --on-accent: var(--bg);
