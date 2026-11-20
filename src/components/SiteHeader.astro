@@ -32,7 +32,7 @@ const bars = [...GITHUB_USER].flatMap((ch) => {
   {lastPush && (
     <p class="push">
       <span class="dots" aria-hidden="true"><b></b><b></b><b class="lit"></b></span>
-      <span class="label">▶ {lastPush}</span>
+      <span class="label">{lastPush}</span>
       <span class="label label-dim">Last push</span>
     </p>
   )}
@@ -72,6 +72,8 @@ const bars = [...GITHUB_USER].flatMap((ch) => {
     text-decoration: none;
     width: fit-content;
   }
+  /* Not smaller than the 12 px floor for text. */
+  .brand sup { font-size: 12px; }
   .barcode { display: flex; height: 18px; }
   .barcode i { display: block; height: 100%; margin-right: 2px; background: var(--fg); }
   /* Bars come in threes, one per handle character: a wider gap after each group. */

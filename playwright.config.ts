@@ -24,7 +24,9 @@ export default defineConfig({
   webServer: {
     command: `npm run build && npm run preview -- --host 127.0.0.1 --port ${PORT}`,
     url: `http://127.0.0.1:${PORT}`,
-    env: { REPOS_FIXTURE: 'e2e/fixtures/github.json' },
+    // BUILD_NOW fixes the clock that decides Active (pushed within 30 days): with it, tidepool
+    // is Active and the other three are Dormant.
+    env: { REPOS_FIXTURE: 'e2e/fixtures/github.json', BUILD_NOW: '2026-11-05T00:00:00Z' },
     reuseExistingServer: !CI,
     timeout: 180_000,
   },

@@ -1,0 +1,152 @@
+---
+// The asset board: one row per public repository, numbered to match its tag (A-01...).
+// Every row is a link to the repository. Active shows a filled dot in the live ink,
+// Dormant an open one, and each also says so in text. Hovering or focusing a row is a
+// Preview (scripts/preview.ts): here it only styles the row. scripts/home.ts opens a plain
+// click or Enter through the shared Open route and reveals "Opened ↗".
+//
+// Test and script hooks: `a[data-asset]` is the row (its index), with data-tag, data-name,
+// data-language, data-commits, data-pushed, data-status="active|dormant", and
+// data-opened="true" once opened. scripts/assets.ts reads them back as Asset objects.
+import type { Repo } from '../lib/github';
+import { assetTag, dotDate, isActive, languageOf, plural } from '../lib/format';
+import Wave from './Wave.astro';
+
+interface Props {
+  repos: Repo[];
+  now: Date;
+}
+const { repos, now } = Astro.props;
+const max = Math.max(1, ...repos.flatMap((r) => r.wave));
+---
+
+<div class="board">
+  <div class="row head" aria-hidden="true">
+    <span class="c-tag">Tag</span>
+    <span class="c-name">Asset</span>
+    <span class="c-lang">Language</span>
+    <span class="c-wave">Activity</span>
+    <span class="c-commits">Commits</span>
+    <span class="c-date">Last push</span>
+  </div>
+  <ol class="list">
+    {
+      repos.map((r, i) => {
+        const active = isActive(r.pushedAt, now);
+        return (
+          <li>
+            <a
+              class="row"
+              href={r.url}
+              data-asset={i}
+              data-tag={assetTag(i)}
+              data-name={r.name}
+              data-language={languageOf(r)}
+              data-commits={r.commits}
+              data-pushed={dotDate(r.pushedAt)}
+              data-status={active ? 'active' : 'dormant'}
+            >
+              <span class="c-tag tag">
+                <span class="mark" aria-hidden="true">{active ? '●' : '○'}</span>
+                <span class="tag-no">{assetTag(i)}</span>
+              </span>
+              <span class="c-name">
+                <b class="name">{r.name}</b>
+                <span class="visually-hidden">{active ? 'Active' : 'Dormant'}</span>
+                <span class="opened" hidden>Opened ↗</span>
+              </span>
+              <span class="c-lang lang">{languageOf(r)}</span>
+              <span class="c-wave">
+                <Wave wave={r.wave} max={max} />
+              </span>
+              <span class="c-commits commits">{plural(r.commits, 'commit')}</span>
+              <span class="c-date date">{dotDate(r.pushedAt)}</span>
+            </a>
+          </li>
+        );
+      })
+    }
+  </ol>
+</div>
+
+<style>
+  /* Phones: tag spans two lines; name and commits on the first, language and date below. */
+  .row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: 'tag name commits' 'tag lang date';
+    gap: 2px 16px;
+    align-items: baseline;
+    padding: 12px 10px;
+  }
+  .c-tag { grid-area: tag; }
+  .c-name { grid-area: name; }
+  .c-lang { grid-area: lang; }
+  .c-commits { grid-area: commits; text-align: right; }
+  .c-date { grid-area: date; text-align: right; }
+  .c-wave { display: none; grid-area: wave; }
+  @media (min-width: 760px) {
+    .row {
+      grid-template-columns: 6.5rem minmax(0, 2.2fr) 7rem minmax(0, 1.6fr) 6.5rem 6.5rem;
+      grid-template-areas: 'tag name lang wave commits date';
+      align-items: center;
+      gap: 16px;
+      padding: 10px 12px;
+    }
+    .c-wave { display: block; }
+  }
+  .list { list-style: none; margin: 0; padding: 0; }
+  .list li { border-bottom: 1px solid var(--line); }
+  .head {
+    display: none;
+    padding-top: 0;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--line-strong);
+    font: 700 12px/1.4 var(--ui);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  @media (min-width: 760px) {
+    .head { display: grid; }
+  }
+  .head .c-commits, .head .c-date { text-align: right; }
+
+  .row { position: relative; color: var(--fg); text-decoration: none; }
+  .tag { display: inline-flex; align-items: baseline; gap: 8px; white-space: nowrap; }
+  /* The mark is a character, so it takes the text inks: Active cyan, Dormant grey. */
+  .mark { font: 400 14px/1 var(--body); color: var(--muted); }
+  [data-status='active'] .mark { color: var(--ink-c-text); }
+  .tag-no { font: 400 13px/1 var(--ui); letter-spacing: 0.08em; }
+  .name { font: 500 15px/1.3 var(--ui); overflow-wrap: anywhere; }
+  .opened { margin-left: 10px; font: 400 12px/1.3 var(--body); color: var(--muted); white-space: nowrap; }
+  .lang, .date { font: 400 13px/1.4 var(--body); color: var(--muted); }
+  .commits { font: 600 13px/1.4 var(--wide); }
+  .c-wave { color: var(--muted); }
+  [data-status='active'] .c-wave { color: var(--ink-c-text); }
+
+  /* Preview hooks: pointer or focus on a row. Magenta number, magenta brackets and a faint
+     magenta tint; focus also draws the 2 px ring. */
+  .row::before,
+  .row::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    bottom: 3px;
+    width: 8px;
+    border: 0 solid var(--ink-m);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .row::before { left: 0; border-width: 2px 0 2px 2px; }
+  .row::after { right: 0; border-width: 2px 2px 2px 0; }
+  .row:hover, .row:focus-visible { background: color-mix(in srgb, var(--ink-m) 7%, transparent); }
+  .row:hover::before, .row:hover::after, .row:focus-visible::before, .row:focus-visible::after { opacity: 1; }
+  .row:hover .tag-no, .row:focus-visible .tag-no { color: var(--ink-m-text); }
+  /* A visible 2 px ring in the focus ink; an outline, so forced colours keep it. */
+  .row:focus-visible { outline: 2px solid var(--ink-m); outline-offset: -2px; }
+  @media (forced-colors: active) {
+    .row:focus-visible { outline-color: Highlight; }
+    .row:hover::before, .row:hover::after, .row:focus-visible::before, .row:focus-visible::after { border-color: Highlight; }
+  }
+</style>

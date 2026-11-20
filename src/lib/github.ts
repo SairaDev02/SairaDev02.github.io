@@ -1,7 +1,6 @@
 // Build-time loader for the owner's public repositories (GitHub REST API). Runs only in
 // Astro's build / dev server; the page embeds the result. About 2 + 2 calls per repo, so
 // pass GITHUB_TOKEN: the anonymous limit is 60 calls an hour.
-import { readmeToLyrics, type Lyric } from './lyrics';
 import { binCommits } from './wave';
 
 export const GITHUB_USER = 'SairaDev02';
@@ -22,8 +21,6 @@ export interface Repo {
   lastCommit: string | null;
   /** Commit counts per lifetime slice; see wave.ts. */
   wave: number[];
-  /** README condensed into short lines; see lyrics.ts. */
-  lyrics: Lyric[];
 }
 
 const MAX_COMMIT_PAGES = 5;
@@ -32,8 +29,6 @@ const ATTEMPTS = 3;
 export interface GitHubClient {
   /** JSON from an API path. An empty repository's 409 reads as []. */
   json(path: string): Promise<unknown>;
-  /** Raw text (README); 404 reads as ''. */
-  text(path: string): Promise<string>;
 }
 
 export function githubClient({
@@ -69,32 +64,22 @@ export function githubClient({
       const res = await get(path, 'application/vnd.github+json', [409]);
       return res ? res.json() : [];
     },
-    async text(path) {
-      const res = await get(path, 'application/vnd.github.raw', [404]);
-      return res ? res.text() : '';
-    },
   };
 }
 
 /**
  * Recorded API responses in place of the network, for builds that need fixed data (the
- * e2e tests). `json` and `text` map API paths to bodies, as the two client methods return
- * them; the responses still go through the same parsing as live ones. An unrecorded JSON
+ * e2e tests). `json` maps API paths to bodies, as the client method returns them; the
+ * responses still go through the same parsing as live ones. An unrecorded JSON
  * path throws, so a fixture that falls behind the loader fails the build.
  */
 export function fixtureClient(fixture: unknown): GitHubClient {
-  const valid =
-    isObj(fixture) && isObj(fixture.json) && isObj(fixture.text) && Object.values(fixture.text).every((v) => typeof v === 'string');
-  if (!valid) throw new Error('GitHub fixture: not a valid fixture; expected { json: { [path]: body }, text: { [path]: string } }');
-  const json = fixture.json as Obj;
-  const text = fixture.text as Record<string, string>;
+  if (!isObj(fixture) || !isObj(fixture.json)) throw new Error('GitHub fixture: not a valid fixture; expected { json: { [path]: body } }');
+  const json = fixture.json;
   return {
     async json(path) {
       if (!Object.hasOwn(json, path)) throw new Error(`GitHub fixture: path not in the fixture: ${path}`);
       return json[path];
-    },
-    async text(path) {
-      return Object.hasOwn(text, path) ? text[path] : '';
     },
   };
 }
@@ -170,7 +155,7 @@ export async function loadRepos(user: string, client: GitHubClient, { hidden = [
     raw
       .filter((r) => !r.fork && !hide.has(r.name.toLowerCase()))
       .map(async (r): Promise<Repo> => {
-        const [times, readme] = await Promise.all([commitTimes(client, user, r.name), client.text(`/repos/${user}/${r.name}/readme`)]);
+        const times = await commitTimes(client, user, r.name);
         const iso = (t: number | undefined) => (t === undefined ? null : new Date(t).toISOString());
         return {
           name: r.name,
@@ -183,7 +168,6 @@ export async function loadRepos(user: string, client: GitHubClient, { hidden = [
           firstCommit: iso(times[0]),
           lastCommit: iso(times.at(-1)),
           wave: binCommits(times),
-          lyrics: readmeToLyrics(readme),
         };
       }),
   );

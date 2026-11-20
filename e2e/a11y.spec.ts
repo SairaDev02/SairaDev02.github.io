@@ -1,8 +1,6 @@
-// Accessibility of the built site: an axe-core scan in the five states the spec names, and
-// the keyboard skip link. The Lyrics panel's gradient is reported by axe as incomplete
-// rather than checked, so its contrast is measured by hand and recorded on ticket #31.
+// Accessibility of the built site: an axe-core scan of the home page in both themes (plain,
+// a row previewed, a repository opened), the 404 page, and the keyboard skip link.
 import AxeBuilder from '@axe-core/playwright';
-import type { Page } from '@playwright/test';
 import { expect, test } from './test';
 
 /** What a scan returns, typed from the builder itself rather than the axe-core package. */
@@ -12,54 +10,7 @@ type Scan = Awaited<ReturnType<AxeBuilder['analyze']>>;
 const violations = (results: Scan) =>
   results.violations.map((v) => `${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`);
 
-/** Whether a rule ran at all: a rule that never ran cannot have found anything. */
-const ranRule = (results: Scan, rule: string) =>
-  [...results.passes, ...results.incomplete].some((r) => r.id === rule);
-
-const openPanel = async (page: Page, name: 'Lyrics' | 'Queue') => {
-  const toggle = page.getByRole('button', { name, exact: true });
-  await toggle.click();
-  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
-};
-
 test.describe('axe scan', () => {
-  test('the home page has no violations with the panels closed', async ({ page }) => {
-    await page.goto('/');
-    const results = await new AxeBuilder({ page }).analyze();
-    expect(violations(results)).toEqual([]);
-  });
-
-  test('the Lyrics panel has no violations', async ({ page }) => {
-    await page.goto('/');
-    await openPanel(page, 'Lyrics');
-    const results = await new AxeBuilder({ page }).analyze();
-    expect(violations(results)).toEqual([]);
-  });
-
-  test('the Queue panel has no violations, and no cue name drifts from its visible text', async ({ page }) => {
-    await page.goto('/');
-    await openPanel(page, 'Queue');
-    const results = await new AxeBuilder({ page }).analyze();
-    expect(violations(results)).toEqual([]);
-    // A zero-violation result only proves the rule found nothing if it ran at all.
-    expect(ranRule(results, 'label-content-name-mismatch')).toBe(true);
-  });
-
-  test('the home page has no violations while a play runs', async ({ page }) => {
-    // The tab a play opens is not the subject: the page that plays is.
-    await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
-    await page.addInitScript(() => {
-      Object.defineProperty(window, 'open', { configurable: true, writable: true, value: () => ({ opener: null }) });
-    });
-    await page.goto('/');
-    await page.locator('[data-dock] [data-np="play"]').click();
-    // Past the load: Eject is on the faceplate and the disc is playing.
-    await page.clock.fastForward(1_600);
-    await expect(page.locator('[data-lcd-eject]')).toBeVisible();
-    const results = await new AxeBuilder({ page }).analyze();
-    expect(violations(results)).toEqual([]);
-  });
-
   test('the 404 page has no violations', async ({ page }) => {
     await page.goto('/no-such-track');
     const results = await new AxeBuilder({ page }).analyze();
@@ -77,11 +28,34 @@ test.describe('axe scan in both themes', () => {
         expect(violations(results)).toEqual([]);
       });
     }
+
+    test(`a previewed row has no violations in ${scheme}`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme: scheme });
+      await page.goto('/');
+      await page.locator('[data-asset="1"]').focus();
+      await expect(page.locator('[data-asset="1"]')).toBeFocused();
+      const results = await new AxeBuilder({ page }).analyze();
+      expect(violations(results)).toEqual([]);
+    });
+
+    test(`an opened repository has no violations in ${scheme}`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme: scheme });
+      // The tab an Open makes is not the subject: the page that opens it is.
+      await page.addInitScript(() => {
+        Object.defineProperty(window, 'open', { configurable: true, writable: true, value: () => ({ opener: null }) });
+      });
+      await page.goto('/');
+      await page.locator('[data-asset="0"]').click();
+      await expect(page.locator('[data-asset="0"]')).toHaveAttribute('data-opened', 'true');
+      await expect(page.getByRole('status')).toHaveText('Opened tidepool in a new tab');
+      const results = await new AxeBuilder({ page }).analyze();
+      expect(violations(results)).toEqual([]);
+    });
   }
 });
 
 test.describe('skip link', () => {
-  test('is the first stop, revealed on focus, and moves focus to the track list', async ({ page }) => {
+  test('is the first stop, revealed on focus, and moves focus to the board', async ({ page }) => {
     await page.goto('/');
     const skip = page.getByRole('link', { name: 'Skip to repositories' });
     // Hidden by position, not by display, so it stays in the accessibility tree and the
@@ -96,14 +70,14 @@ test.describe('skip link', () => {
     const repositories = page.getByRole('region', { name: 'Repositories' });
     await expect(repositories).toBeFocused();
     await expect(repositories).toHaveCSS('outline-style', 'solid');
-    await expect(repositories.locator('[data-track]')).toHaveCount(4);
+    await expect(repositories.locator('[data-asset]')).toHaveCount(4);
   });
 
-  test('rings the track list only when the skip link moves focus there, not on a click', async ({ page }) => {
+  test('rings the board only when the skip link moves focus there, not on a click', async ({ page }) => {
     await page.goto('/');
     const repositories = page.getByRole('region', { name: 'Repositories' });
-    // A click on plain text inside the list focuses the list itself (tabindex="-1").
-    await repositories.getByText('Public playlist · 4 repositories').click();
+    // A click on the board's own padding focuses the list itself (tabindex="-1").
+    await repositories.click({ position: { x: 4, y: 3 } });
     await expect(repositories).toBeFocused();
     await expect(repositories).toHaveCSS('outline-style', 'none');
   });

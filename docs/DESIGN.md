@@ -41,9 +41,10 @@ Light is the default and the fallback without script. Dark replaces every value.
 | `--line` / `--line-strong` | K at 18% / 26% | K at 18% / 26% | 1 px hairlines |
 
 - Square corners. 1 px hairlines in K at 12 to 26% strength.
-- The music components still in the tree use legacy names (`--accent`, `--sun`, `--cue`,
-  `--shade-0` to `-3`, `--glass`), mapped onto these tokens in `global.css`. They go with
-  those components; new code uses the tokens above.
+- A few legacy names (`--accent`, `--on-accent`, `--sun`, `--sun-core`, `--on-sun`,
+  `--shade-0` to `-3`, `--glass`) remain, mapped onto these tokens in `global.css`. The
+  shared Button, the header, the 404 card and the dev-only link-preview route
+  (`src/dev/og-card.astro`) still use them; new code uses the tokens above.
 
 ## Light multiplies, Dark replaces
 

@@ -44,8 +44,9 @@
   --field-major: #262c32;
 }
 :root {
-  /* Names the music components (removed in a later slice) still use, mapped onto the
-     tokens above so they stay legible. New code uses the tokens above, not these. */
+  /* Names the shared Button, the header's hover state, the 404 card and the dev-only
+     link-preview route (src/dev/og-card.astro) still use, mapped onto the tokens above.
+     New code uses the tokens above, not these. */
   --shade-0: var(--terrain-0);
   --shade-1: var(--terrain-1);
   --shade-2: var(--terrain-2);
@@ -55,7 +56,6 @@
   --on-sun: #1b1b1c;
   --accent: var(--fg);
   --on-accent: var(--bg);
-  --cue: var(--ink-m);
   --glass: color-mix(in srgb, var(--bg) 85%, transparent);
 
   /* Self-hosted through Fontsource (see BaseLayout); the variable fonts carry these names. */
@@ -66,16 +66,12 @@
 
   --page-max: 1100px;
   --header-h: 84px;
-  --dock-h: 96px;
 }
 
 * { box-sizing: border-box; }
 html {
   background: var(--bg);
   color: var(--fg);
-  /* Focused elements and scrollIntoView keep clear of the fixed Dock. scripts/dock/dock.ts
-     sets --dock-space to the Dock's measured height: its bar plus any open panel. */
-  scroll-padding-bottom: var(--dock-space, var(--dock-h));
   /* A focused element is never under the sticky header (wide screens only: on phones the
      header scrolls away). */
   scroll-padding-top: 0;
