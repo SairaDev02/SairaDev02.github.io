@@ -13,7 +13,7 @@ export function llmsTxt(user: string, site: string, repos: Repo[]): string {
   return [
     `# ${user}`,
     '',
-    `> Portfolio of the GitHub user ${user}: their public repositories, presented as a music playlist.`,
+    `> Portfolio of the GitHub user ${user}: their public repositories.`,
     '',
     `The [Home page](${site}) lists every public, non-fork repository, most recently pushed first. ` +
       'The list below is rebuilt with the site each day.',

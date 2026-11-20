@@ -27,7 +27,7 @@ export interface SiteMetadata {
 export const SITE: SiteMetadata = {
   name: GITHUB_USER,
   title: `${GITHUB_USER} · public repositories`,
-  description: `Public repositories of ${GITHUB_USER}, played as a playlist: names, descriptions, languages and commit history.`,
+  description: `Public repositories of ${GITHUB_USER}: names, languages, commit counts and recent activity.`,
   url: homeUrl,
   // GitHub serves the user's portrait at an id-based URL; there is no handle-based one.
   avatar: 'https://avatars.githubusercontent.com/u/96645098',

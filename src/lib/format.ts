@@ -1,8 +1,8 @@
 // Display formats shared by the server-rendered page and its scripts.
 import type { Repo } from './github';
 
-/** Track number from a zero-based index: 0 -> "01". */
-export const trackNo = (i: number) => String(i + 1).padStart(2, '0');
+/** An Asset's tag from its zero-based index: 0 -> "A-01". */
+export const assetTag = (i: number) => `A-${String(i + 1).padStart(2, '0')}`;
 
 /** "2026-11-12T…" -> "2026.11.12"; missing -> "—". */
 export const dotDate = (iso: string | null) => (iso ? iso.slice(0, 10).replaceAll('-', '.') : '—');
@@ -11,7 +11,21 @@ export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' :
 
 export const languageOf = (r: Pick<Repo, 'language'>) => r.language ?? 'Text';
 
-/** What the page's scripts get about each repository (the waveforms are server-rendered). */
-export type Track = Omit<Repo, 'wave'>;
+/** An Asset is Active when its repository was pushed within this many days. */
+export const ACTIVE_DAYS = 30;
 
-export const toTrack = ({ wave: _wave, ...track }: Repo): Track => track;
+/** Active (pushed within the last 30 days of `now`) or Dormant. */
+export const isActive = (pushedAt: string, now: Date) => now.getTime() - Date.parse(pushedAt) <= ACTIVE_DAYS * 86_400_000;
+
+/** An Asset's status: the board's `data-status`, which scripts/assets.ts parses back. */
+export type AssetStatus = 'active' | 'dormant';
+export const statusOf = (pushedAt: string, now: Date): AssetStatus => (isActive(pushedAt, now) ? 'active' : 'dormant');
+
+/**
+ * The clock that decides Active: the build time. BUILD_NOW pins it, so the e2e build has
+ * fixed statuses whatever day it runs.
+ */
+export const buildNow = (): Date => {
+  const pinned: string | undefined = import.meta.env.BUILD_NOW;
+  return pinned ? new Date(pinned) : new Date();
+};

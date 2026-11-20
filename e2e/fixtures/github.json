@@ -72,9 +72,5 @@
       { "commit": { "author": { "date": "2026-07-01T08:55:00Z" } } }
     ],
     "/repos/SairaDev02/empty-box/commits?per_page=100&page=1": []
-  },
-  "text": {
-    "/repos/SairaDev02/tidepool/readme": "# tidepool\n\n[![CI](https://img.shields.io/badge/ci-passing-green)](https://example.invalid)\n\nTurns tide tables into slow, swelling drones.\n\n## Usage\n\nPipe a tide chart in and listen to the harbour breathe.\n\n```sh\ntidepool < harbour.csv\n```\n",
-    "/repos/SairaDev02/quiet-notes/readme": "# quiet-notes\n\nPlain text notes, nothing more.\n"
   }
 }

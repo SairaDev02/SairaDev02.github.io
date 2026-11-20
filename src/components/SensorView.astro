@@ -1,0 +1,141 @@
+---
+// The sensor view's frame. It reserves its box (aspect ratio of the base grid) so nothing
+// shifts when the scene arrives; scripts/sensor/boot.ts loads the three.js scene into it
+// after the page has painted. The canvas and HUD are built by script, so their styles are
+// global, scoped under `.sensor`. HUD and card are aria-hidden.
+//
+// The base grid (device pixels at scale 1) is written here only, as --grid-w and --grid-h
+// on the frame: wide, and portrait on phones. The scene reads them back from the frame's
+// computed style. The phone breakpoint is the one `@media` rule below; the scene's
+// PHONE_QUERY (scripts/sensor/scene.ts) must match it, as a media query cannot take a variable.
+---
+
+<section class="wrap sensor" aria-label="Sensor view">
+  <div class="frame" data-sensor-frame></div>
+</section>
+
+<style is:global>
+  .sensor { padding-top: 16px; }
+  .sensor .frame {
+    position: relative;
+    overflow: hidden;
+    --grid-w: 512;
+    --grid-h: 224;
+    aspect-ratio: var(--grid-w) / var(--grid-h);
+    background: var(--bg);
+    border: 1px solid var(--line-strong);
+    /* A swipe scrolls the page; no double-tap zoom, so a second tap is a tap. The frame,
+       not the canvas, takes the pointer: the canvas is clipped while it scans in. */
+    touch-action: manipulation;
+    cursor: crosshair;
+  }
+  .sensor .sensor-canvas { display: block; image-rendering: pixelated; }
+  .sensor .sensor-hud { position: absolute; inset: 0; pointer-events: none; font: 400 12px/1.4 var(--body); color: var(--fg); }
+
+  /* Corner brackets. */
+  .sensor .corner { position: absolute; width: 14px; height: 14px; border: 0 solid var(--fg); }
+  .sensor .corner.tl { top: 6px; left: 6px; border-width: 1px 0 0 1px; }
+  .sensor .corner.tr { top: 6px; right: 6px; border-width: 1px 1px 0 0; }
+  .sensor .corner.bl { bottom: 6px; left: 6px; border-width: 0 0 1px 1px; }
+  .sensor .corner.br { bottom: 6px; right: 6px; border-width: 0 1px 1px 0; }
+
+  /* Corner readouts. */
+  .sensor .readout {
+    position: absolute;
+    padding: 2px 6px;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+  }
+  .sensor .readout.tl { top: 14px; left: 14px; }
+  .sensor .readout.tr { top: 14px; right: 14px; }
+  .sensor .readout.bl { bottom: 14px; left: 14px; }
+  .sensor .readout.br { bottom: 14px; right: 14px; color: var(--ink-c-text); }
+
+  /* Crosshair follows the pointer; hidden for touch and when the pointer is away. */
+  .sensor .cross-x, .sensor .cross-y { position: absolute; top: 0; left: 0; display: none; background: var(--line-strong); }
+  .sensor .cross-x { width: 100%; height: 1px; }
+  .sensor .cross-y { width: 1px; height: 100%; }
+  .sensor .has-pointer .cross-x, .sensor .has-pointer .cross-y { display: block; }
+
+  /* Tags: A-01 onwards, beside their markers. */
+  .sensor .tag {
+    position: absolute;
+    top: 0;
+    left: 0;
+    padding: 1px 5px;
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    border: 1px solid var(--line-strong);
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+  }
+  .sensor .tag:not(.is-placed) { visibility: hidden; }
+  .sensor .tag.is-live { color: var(--ink-c-text); border-color: var(--ink-c-text); }
+  .sensor .tag.is-sel { color: var(--ink-m-text); border-color: var(--ink-m); }
+
+  /* Targeting brackets on the previewed marker. */
+  .sensor .lock { position: absolute; top: 0; left: 0; width: 0; height: 0; }
+  .sensor .lock i { position: absolute; width: 9px; height: 9px; border: 0 solid var(--ink-m); }
+  .sensor .lock i:nth-child(1) { left: -14px; top: -14px; border-width: 2px 0 0 2px; }
+  .sensor .lock i:nth-child(2) { left: 5px; top: -14px; border-width: 2px 2px 0 0; }
+  .sensor .lock i:nth-child(3) { left: -14px; top: 5px; border-width: 0 0 2px 2px; }
+  .sensor .lock i:nth-child(4) { left: 5px; top: 5px; border-width: 0 2px 2px 0; }
+
+  /* The card: tag, name, language and commits, last push and status. */
+  .sensor .card {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 200px;
+    padding: 8px 12px;
+    background: var(--bg);
+    border: 1px solid var(--ink-m);
+    white-space: nowrap;
+  }
+  .sensor .card .card-status { font: 700 12px/1.4 var(--body); letter-spacing: 0.1em; color: var(--ink-m-text); }
+  .sensor .card .card-name { font: 600 14px/1.3 var(--ui); letter-spacing: 0.06em; }
+  .sensor .card .card-line { color: var(--muted); }
+
+  /* Phones (max-width 600px; PHONE_QUERY in scene.ts matches): the portrait grid, no clock or
+     grid readout, the card docked along the bottom in place of the asset count. The script
+     clears the card's own placement on phones, so no !important is needed. */
+  @media (max-width: 600px) {
+    .sensor .frame { --grid-w: 256; --grid-h: 320; }
+    .sensor .readout.tr, .sensor .readout.bl { display: none; }
+    .sensor .has-card .readout.br { display: none; }
+    .sensor .readout.tl { white-space: normal; max-width: calc(100% - 28px); }
+    .sensor .card { top: auto; left: 8px; right: 8px; bottom: 8px; min-width: 0; }
+  }
+
+  /* Forced colours: the marks keep their outlines. */
+  @media (forced-colors: active) {
+    .sensor .card, .sensor .tag { border-color: CanvasText; }
+    .sensor .lock i { border-color: Highlight; }
+  }
+
+  /* Motion: only with no reduced-motion preference. The scene scans in from the top with a
+     yellow scan line; the card clips open from the left; the brackets close in. */
+  @media (prefers-reduced-motion: no-preference) {
+    .sensor .frame[data-ready] .sensor-canvas { animation: sensor-scan 700ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+    .sensor .frame[data-ready]::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 2px;
+      background: var(--ink-y);
+      pointer-events: none;
+      animation: sensor-scanline 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+    .sensor .card.is-in { animation: sensor-card 180ms ease-out both; }
+    .sensor .lock.is-locking { animation: sensor-lock 220ms ease-out both; }
+  }
+  @keyframes sensor-scan { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0); } }
+  @keyframes sensor-scanline { from { top: 0; opacity: 1; } 90% { opacity: 1; } to { top: 100%; opacity: 0; } }
+  @keyframes sensor-card { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0); } }
+  @keyframes sensor-lock { from { scale: 1.8; opacity: 0; } to { scale: 1; opacity: 1; } }
+</style>

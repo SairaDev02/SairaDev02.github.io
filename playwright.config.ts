@@ -3,7 +3,9 @@
 // API (REPOS_FIXTURE, see src/lib/github.ts), so the page content is fixed.
 import { defineConfig, devices } from '@playwright/test';
 
-const PORT = 4322; // not astro's default 4321, so a running dev server is never reused
+// Not astro's default 4321, so a running dev server is never reused. E2E_PORT gives
+// checkouts that test side by side (such as worktrees) a server each.
+const PORT = Number(process.env.E2E_PORT) || 4322;
 const CI = !!process.env.CI;
 
 export default defineConfig({
@@ -24,7 +26,9 @@ export default defineConfig({
   webServer: {
     command: `npm run build && npm run preview -- --host 127.0.0.1 --port ${PORT}`,
     url: `http://127.0.0.1:${PORT}`,
-    env: { REPOS_FIXTURE: 'e2e/fixtures/github.json' },
+    // BUILD_NOW fixes the clock that decides Active (pushed within 30 days): with it, tidepool
+    // is Active and the other three are Dormant.
+    env: { REPOS_FIXTURE: 'e2e/fixtures/github.json', BUILD_NOW: '2026-11-05T00:00:00Z' },
     reuseExistingServer: !CI,
     timeout: 180_000,
   },

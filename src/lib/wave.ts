@@ -1,5 +1,5 @@
 // Commit "waveform" of a repository: commit counts in equal slices of the repository's own
-// lifetime (first to last commit), so every track spans the full width whatever its age.
+// lifetime (first to last commit), so every Asset's wave spans the full width whatever its age.
 // GitHub's stats/participation endpoint was rejected for this: it covers only 52 weeks.
 
 export const WAVE_BINS = 48;

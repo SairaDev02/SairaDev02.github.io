@@ -1,27 +1,62 @@
 /* Site tokens and base styles. The visual system is described in docs/DESIGN.md. */
 
+/* Sensor CMYK. Light (paper) is the default and the no-script fallback; the pre-paint
+   script (src/scripts/theme-init.js) sets data-theme on the root to light or dark, and
+   src/scripts/theme.ts keeps it. Dark (key) replaces the values below. */
 :root {
-  /* Picture: four cobalt levels, darkest first, read by the canvas renderer. */
-  --shade-0: #13238a;
-  --shade-1: #2f55e4;
-  --shade-2: #a9c3f6;
-  --shade-3: #f6f9ff;
-  /* Light sources in the picture and small fills in the chrome. Never text on the pale
-     page: too little contrast. Navy text sits on it instead. */
-  --sun: #ffd60a;
-  --sun-core: #fff6c4;
-  --on-sun: #0c1233;
-
-  --bg: #dfe9fb;
-  --fg: #0c1233;
-  --muted: #42507c;
-  --accent: #1d3fd0;
-  /* The cued row's outline and glow. */
-  --cue: #78a0f5;
-  --on-accent: #ffffff;
-  --line: rgb(29 63 208 / 0.28);
-  --line-strong: rgb(29 63 208 / 0.35);
-  --glass: rgb(246 249 255 / 0.82);
+  color-scheme: light;
+  --bg: #f2efe6;
+  --fg: #1b1b1c;
+  --muted: #5d5b56;
+  /* Terrain dither levels, darkest first (read by canvas renderers). */
+  --terrain-0: #f2efe6;
+  --terrain-1: #c9c5bb;
+  --terrain-2: #6c6a64;
+  --terrain-3: #1b1b1c;
+  /* Inks: cyan means live, magenta focus, yellow is the highlighter (never text). */
+  --ink-c: #00a6e2;
+  --ink-m: #e6007e;
+  --ink-y: #ffe500;
+  /* Text in an ink's meaning uses these; marks use the pure inks. */
+  --ink-c-text: #006f99;
+  --ink-m-text: #b8005f;
+  --field-line: #dcd8ce;
+  --field-major: #c8c4b9;
+  /* 1 px K hairlines at 12-26% strength. */
+  --line: color-mix(in srgb, var(--fg) 18%, transparent);
+  --line-strong: color-mix(in srgb, var(--fg) 26%, transparent);
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0a0c0e;
+  --fg: #e3e7ea;
+  --muted: #8d97a1;
+  --terrain-0: #07090b;
+  --terrain-1: #2b3138;
+  --terrain-2: #7d8791;
+  --terrain-3: #e3e7ea;
+  --ink-c: #18c0ff;
+  --ink-m: #ff3dad;
+  --ink-y: #ffe94a;
+  --ink-c-text: var(--ink-c);
+  --ink-m-text: var(--ink-m);
+  --field-line: #1a1f24;
+  --field-major: #262c32;
+}
+:root {
+  /* Names the shared Button, the header's hover state, the 404 card and the dev-only
+     link-preview route (src/dev/og-card.astro) still use, mapped onto the tokens above.
+     New code uses the tokens above, not these. */
+  --shade-0: var(--terrain-0);
+  --shade-1: var(--terrain-1);
+  --shade-2: var(--terrain-2);
+  --shade-3: var(--terrain-3);
+  --sun: var(--ink-y);
+  --sun-core: var(--ink-y);
+  --on-sun: #1b1b1c;
+  --accent: var(--fg);
+  --on-accent: var(--bg);
+  --glass: color-mix(in srgb, var(--bg) 85%, transparent);
 
   /* Self-hosted through Fontsource (see BaseLayout); the variable fonts carry these names. */
   --wide: 'Lexend Exa Variable', var(--ui);
@@ -30,23 +65,26 @@
   --pixel: 'Pixelify Sans Variable', ui-monospace, monospace;
 
   --page-max: 1100px;
-  --dock-h: 96px;
+  --header-h: 84px;
 }
 
 * { box-sizing: border-box; }
 html {
   background: var(--bg);
   color: var(--fg);
-  /* Focused elements and scrollIntoView keep clear of the fixed Dock. scripts/dock/dock.ts
-     sets --dock-space to the Dock's measured height: its bar plus any open panel. */
-  scroll-padding-bottom: var(--dock-space, var(--dock-h));
+  /* A focused element is never under the sticky header (wide screens only: on phones the
+     header scrolls away). */
+  scroll-padding-top: 0;
+}
+@media (min-width: 900px) {
+  html { scroll-padding-top: var(--header-h); }
 }
 body {
   margin: 0;
   font: 400 15px/1.65 var(--body);
 }
 a { color: inherit; }
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+:focus-visible { outline: 2px solid var(--ink-m); outline-offset: 3px; }
 [hidden] { display: none !important; }
 
 .wrap {
@@ -61,7 +99,7 @@ a { color: inherit; }
   font: 400 12px/1.5 var(--ui);
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--fg);
 }
 .label-dim { color: var(--muted); }
 
@@ -73,3 +111,6 @@ a { color: inherit; }
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/* The theme swap crossfades (a view transition), a little slower than the default. */
+::view-transition-group(root) { animation-duration: 320ms; }

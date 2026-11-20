@@ -1,0 +1,71 @@
+---
+// The operator block: the plain GitHub portrait in an outlined frame with its ID label, the
+// label line, the name (the page's h1 and its LCP element, never rewritten by script), a
+// "Systems online" chip and one stats line.
+import { Image } from 'astro:assets';
+import { GITHUB_USER, type Repo } from '../lib/github';
+import { SITE } from '../lib/site';
+import { plural } from '../lib/format';
+
+interface Props {
+  repos: Repo[];
+  /** How many of `repos` are Active. */
+  active: number;
+  lastPush: string;
+}
+const { repos, active, lastPush } = Astro.props;
+const commits = repos.reduce((a, r) => a + r.commits, 0);
+const languages = [...new Set(repos.map((r) => r.language).filter((l) => l !== null))];
+---
+
+<section class="wrap operator" aria-label="Operator">
+  <figure class="id">
+    <span class="frame">
+      <Image src={SITE.avatar} width={224} height={224} format="webp" alt={`${GITHUB_USER}’s GitHub avatar`} />
+    </span>
+    <figcaption class="label">ID · OP-01</figcaption>
+  </figure>
+  <div class="text">
+    <p class="label label-dim">Public repositories</p>
+    <h1>{GITHUB_USER}</h1>
+    <p class="chip"><span class="dot" aria-hidden="true"></span>Systems online</p>
+    <p class="stats">{plural(repos.length, 'asset')} · {active} active · {plural(commits, 'commit')} · {languages.join(' / ')} · last push {lastPush}</p>
+  </div>
+</section>
+
+<style>
+  .operator { display: flex; flex-wrap: wrap; align-items: center; gap: 20px 28px; padding-top: 32px; padding-bottom: 28px; }
+  .id { margin: 0; display: flex; flex-direction: column; gap: 8px; }
+  /* The plain photo in a K outline: no filter, no overlay. */
+  .frame { display: block; padding: 5px; border: 1px solid var(--line-strong); line-height: 0; }
+  .frame img { display: block; width: 96px; height: 96px; object-fit: cover; }
+  .id .label { font-size: 12px; letter-spacing: 0.12em; color: var(--muted); }
+  .text { min-width: 0; }
+  /* :where() keeps this reset at the specificity of one class, so the .chip and .stats margins below win. */
+  .text :where(p) { margin: 0; }
+  h1 {
+    margin: 4px 0 0;
+    font: 600 clamp(1.8rem, 6.4vw, 3.3rem) / 1 var(--wide);
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+    overflow-wrap: anywhere;
+  }
+  /* Live means cyan: the chip, its mark and its outline take the text ink, which holds 3:1 on paper. */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 14px;
+    padding: 5px 10px;
+    border: 1px solid var(--ink-c-text);
+    font: 700 12px/1 var(--body);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-c-text);
+  }
+  .dot { width: 8px; height: 8px; background: var(--ink-c-text); }
+  .stats { margin-top: 12px; font: 400 13px/1.6 var(--body); letter-spacing: 0.04em; color: var(--muted); }
+  @media (min-width: 600px) {
+    .frame img { width: 128px; height: 128px; }
+  }
+</style>

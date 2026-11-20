@@ -6,7 +6,7 @@ import { expect, test } from './test';
 const HOME = 'https://sairadev02.github.io/';
 const TITLE = 'SairaDev02 · public repositories';
 const DESCRIPTION =
-  'Public repositories of SairaDev02, played as a playlist: names, descriptions, languages and commit history.';
+  'Public repositories of SairaDev02: names, languages, commit counts and recent activity.';
 const OG_ALT =
   'SairaDev02 in large type on a frosted panel over a pixel-dithered blue cloud sky with a small yellow sun';
 
@@ -192,15 +192,15 @@ test.describe('icons', () => {
 });
 
 test.describe('404 page', () => {
-  test('an unknown path returns 404 in site chrome with a way back to the playlist', async ({ page }) => {
+  test('an unknown path returns 404 in site chrome with a way back to the repositories', async ({ page }) => {
     const res = await page.goto('/no-such-track');
     expect(res?.status()).toBe(404);
     await expect(page).toHaveTitle('Not found · SairaDev02');
-    await expect(page.getByRole('heading', { level: 1, name: 'Track not found' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Page not found' })).toBeVisible();
     await expect(page.getByRole('banner')).toBeVisible();
     await expect(page.getByRole('contentinfo')).toBeVisible();
 
-    const back = page.getByRole('link', { name: 'Back to the playlist' });
+    const back = page.getByRole('link', { name: 'Back to the repositories' });
     await expect(back).toHaveAttribute('href', '/');
     await back.click();
     await expect(page).toHaveTitle(TITLE);
@@ -211,6 +211,28 @@ test.describe('404 page', () => {
     await page.goto('/no-such-track');
     expect(await page.locator('link[rel="canonical"]').count()).toBe(0);
     expect(await page.locator('script[type="application/ld+json"]').count()).toBe(0);
+  });
+});
+
+test.describe('wording', () => {
+  // The play model is gone, so the music framing goes with it.
+  const MUSIC = /music|playlist|tracks?|discs?|play(s|ed|ing)?|player|listen|album|songs?|lyrics|queue|shuffle/i;
+
+  test('the home page says nothing about music', async ({ page, request }) => {
+    await page.goto('/');
+    expect(await page.title()).not.toMatch(MUSIC);
+    expect(await meta(page, 'description')).not.toMatch(MUSIC);
+    expect(await meta(page, 'og:description')).not.toMatch(MUSIC);
+    expect(JSON.stringify(await jsonLd(page))).not.toMatch(MUSIC);
+    expect(await page.locator('body').innerText()).not.toMatch(MUSIC);
+    expect(await (await request.get('/llms.txt')).text()).not.toMatch(MUSIC);
+  });
+
+  test('the 404 page says nothing about music', async ({ page }) => {
+    await page.goto('/no-such-track');
+    expect(await page.title()).not.toMatch(MUSIC);
+    expect(await meta(page, 'description')).not.toMatch(MUSIC);
+    expect(await page.locator('body').innerText()).not.toMatch(MUSIC);
   });
 });
 

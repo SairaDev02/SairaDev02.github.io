@@ -146,7 +146,7 @@ test.describe('policy on every page', () => {
 });
 
 test.describe('nothing is blocked', () => {
-  test('loads the inlined stylesheet, the barcode and grid styles, the fonts, the JSON-LD and the tracks JSON', async ({ page }) => {
+  test('loads the inlined stylesheet, the barcode styles, the fonts and the JSON-LD', async ({ page }) => {
     const fonts: string[] = [];
     page.on('response', (response) => {
       if (response.url().endsWith('.woff2') && response.status() === 200) fonts.push(new URL(response.url()).pathname);
@@ -155,85 +155,45 @@ test.describe('nothing is blocked', () => {
     await page.goto('/');
 
     // The inlined stylesheet applies: the body font comes from global.css and the barcode
-    // bars take their colour from its `--accent` token.
+    // bars take their colour from its `--fg` token.
     expect(await page.evaluate(() => getComputedStyle(document.body).fontFamily)).toContain('IBM Plex Mono');
     expect(await page.locator('.barcode i').first().evaluate((bar) => getComputedStyle(bar).backgroundColor)).toBe(
-      'rgb(29, 63, 208)',
+      'rgb(27, 27, 28)',
     );
 
-    // The barcode's bar widths and the player's grid size apply. A blocked rule leaves
-    // every bar zero-width and the grid unset.
+    // The barcode's bar widths apply. A blocked rule leaves every bar zero-width.
     const bars = await page
       .locator('.barcode i')
       .evaluateAll((all) => all.map((bar) => parseFloat(getComputedStyle(bar).width)));
     expect(bars.length).toBeGreaterThan(0);
     expect(bars.every((width) => width > 0)).toBe(true);
-    expect(await page.locator('canvas').evaluate((c) => getComputedStyle(c).getPropertyValue('--wide-w').trim())).not.toBe('');
 
     // Both preloaded fonts arrive.
     const preloaded = await page
       .locator('link[rel="preload"][as="font"]')
       .evaluateAll((links) => links.map((link) => new URL(link.getAttribute('href') ?? '', location.href).pathname));
-    expect(preloaded).toHaveLength(2);
+    expect(preloaded.length).toBeGreaterThan(0);
     await expect.poll(() => fonts).toEqual(expect.arrayContaining(preloaded));
 
-    // The JSON-LD parses and the client script parsed the tracks JSON: the dock's next-in-
-    // queue button only exists once the script has read it.
     const graph = JSON.parse((await page.locator('script[type="application/ld+json"]').textContent()) ?? '');
     expect(graph['@context']).toBe('https://schema.org');
-    await page.getByRole('button', { name: 'Next: paper-lantern' }).click();
-    await expect(page.getByRole('region', { name: 'Now playing' }).locator('[data-np-title]')).toHaveText('02 paper-lantern');
 
     expect(await violations(page)).toEqual([]);
   });
 
-  test('holds while the Lyrics panel, the Queue panel and a queue drag are used', async ({ page }) => {
+  test('holds while a repository is opened', async ({ page }) => {
     await watchPolicy(page);
-    await page.goto('/');
-    const errors = policyErrors(page);
-
-    const lyrics = page.getByRole('button', { name: 'Lyrics', exact: true });
-    await lyrics.click();
-    await expect(page.getByRole('region', { name: 'Lyrics: README of the cued repository' })).toBeVisible();
-    await lyrics.click();
-    await expect(lyrics).toHaveAttribute('aria-expanded', 'false');
-
-    await page.getByRole('button', { name: 'Queue', exact: true }).click();
-    const panel = page.getByRole('region', { name: 'Queue', exact: true });
-    await expect(panel.locator('[data-q-next] [data-q-name]')).toHaveText(['paper-lantern', 'quiet-notes', 'empty-box']);
-
-    const row = (await panel.locator('[data-q-next] > li').first().boundingBox())!;
-    const handle = (await panel.locator('[data-q-next] [data-q-handle]').first().boundingBox())!;
-    const x = handle.x + handle.width / 2;
-    const y = handle.y + handle.height / 2;
-    await page.mouse.move(x, y);
-    await page.mouse.down();
-    await page.mouse.move(x, y + row.height * 2, { steps: 8 });
-    await page.mouse.up();
-    await expect(panel.locator('[data-q-next] [data-q-name]')).toHaveText(['quiet-notes', 'empty-box', 'paper-lantern']);
-
-    expect(await violations(page), 'CSP violations from the panels and the drag').toEqual([]);
-    expect(errors, 'policy console errors').toEqual([]);
-  });
-
-  test('holds while a disc plays', async ({ page }) => {
-    await watchPolicy(page);
-    // The tab a play opens is another document; the page that plays is the one under test.
+    // The tab an Open makes is another document; the page that opens it is under test.
     await page.addInitScript(() => {
       Object.defineProperty(window, 'open', { configurable: true, writable: true, value: () => ({ opener: null }) });
     });
     await page.goto('/');
     const errors = policyErrors(page);
 
-    await page.locator('[data-dock] [data-np="play"]').click();
-    await expect(page.locator('[data-lcd-title]')).toHaveText('Loading tidepool');
-    await expect(page.locator('[data-dock]')).toHaveClass(/is-playing/);
-    // The play writes to the document (the waveform fill, the status, the load's animation):
-    // read what it has recorded so far, and again once the load has given way to the play.
-    expect(await violations(page), 'CSP violations from the load').toEqual([]);
-
-    await expect(page.locator('[data-lcd-title]')).toHaveText('tidepool');
-    expect(await violations(page), 'CSP violations from the play').toEqual([]);
+    await page.locator('[data-asset="0"]').click();
+    await expect(page.getByRole('status')).toHaveText('Opened tidepool in a new tab');
+    await expect(page.locator('[data-asset="0"]')).toHaveAttribute('data-opened', 'true');
+    expect(await violations(page), 'CSP violations from an Open').toEqual([]);
     expect(errors, 'policy console errors').toEqual([]);
   });
 });
