@@ -4,6 +4,7 @@
 // navigates.
 import { assetOf, boardRows } from './assets';
 import { onOpened, openAsset } from './open';
+import './motion';
 import { getPreview, setPreview } from './preview';
 
 const rows = boardRows();
